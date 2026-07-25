@@ -471,7 +471,8 @@ test('application startup cannot execute or rewrite migration history', () => {
   const database = readFileSync('src/db/index.ts', 'utf8');
   assert.equal(startup.includes('performMigration'), false);
   assert.equal(database.includes('DELETE FROM public.migrations'), false);
-  assert.equal(database.includes("ALLOW_DATABASE_MIGRATIONS !== 'true'"), true);
+  assert.equal(database.includes('ALLOW_DATABASE_MIGRATIONS'), false);
+  assert.equal(database.includes('postgres-migrations'), false);
 });
 
 test('unowned private-file and unversioned legal workflows remain fail-closed', () => {

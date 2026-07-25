@@ -1,7 +1,4 @@
-import { Pool, PoolClient } from 'pg';
-import { migrate } from 'postgres-migrations';
-import path from 'path';
-import { logger } from '../utils/logger';
+import { Pool } from 'pg';
 
 let pool: Pool | null = null;
 
@@ -46,45 +43,6 @@ export async function testConnection(): Promise<void> {
   const client = await getPool().connect();
   try {
     await client.query('SELECT 1');
-  } finally {
-    client.release();
-  }
-}
-
-async function ensureMigrationTable(client: PoolClient) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS public.migrations (
-      id integer PRIMARY KEY,
-      name varchar(100) UNIQUE NOT NULL,
-      hash varchar(40) NOT NULL,
-      executed_at timestamp DEFAULT current_timestamp
-    );
-  `);
-}
-
-/**
- * Manual-only migration entrypoint. Application startup never calls this.
- * Hash mismatches are intentionally fatal: migration history is evidence and
- * must not be erased or replayed automatically.
- */
-export async function performMigration(): Promise<void> {
-  if (process.env.ALLOW_DATABASE_MIGRATIONS !== 'true') {
-    throw new Error(
-      'Database migrations are disabled. Set ALLOW_DATABASE_MIGRATIONS only after the migration set is reviewed.',
-    );
-  }
-
-  const client = await getPool().connect();
-  const migrationsPath = path.join(__dirname, 'migrations');
-
-  try {
-    await ensureMigrationTable(client);
-    logger.info('Starting reviewed database migration');
-    await migrate({ client }, migrationsPath);
-    logger.success('Database migration completed');
-  } catch (error) {
-    logger.error('Database migration failed', error);
-    throw error;
   } finally {
     client.release();
   }
