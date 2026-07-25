@@ -1,13 +1,17 @@
 # Backend route and frontend contract audit
 
-Audit date: 2026-07-11
+Audit updated: 2026-07-25
 
 This repository contains two independent Express entrypoints. No deployment target is inferred from their presence:
 
 - Root JavaScript foundation: `server.js`, default port `3000`.
 - EPDG TypeScript platform: `epdg-backend-core/src/index.ts`, default port `8000`.
 
-The authoritative Railway service, repository root directory, and public API origin require provider evidence. They are not selected in code or this document.
+Provider evidence now maps Railway to the EPDG TypeScript entrypoint. The
+selected service, root, mapped host, current failure, and historical origin
+classifications are maintained in
+[RAILWAY_DEPLOYMENT_MANIFEST.md](RAILWAY_DEPLOYMENT_MANIFEST.md). The mapped
+host is not yet a healthy, releasable API origin.
 
 ## Root JavaScript foundation
 
@@ -162,18 +166,26 @@ The active frontend calls under `epdg/src` were compared with this inventory.
 
 ## Database and release blockers
 
-- Historical migrations `011-create_admins_table.sql` and `024-fix-certificates-table.sql` contain `DROP TABLE`. They must not be run against production as-is.
-- Migration history is no longer applied at server startup and is never deleted on a hash mismatch.
+- Historical migrations `011-create_admins_table.sql` and
+  `024-fix-certificates-table.sql` contain `DROP TABLE`. Their SQL and hashes
+  remain unchanged and match the live ledger. All `001`-`033` SQL is source-only
+  audit evidence and is excluded from the runtime artifact.
+- The application contains no database-migration execution path. Any future
+  change requires a separately reviewed forward-only operator workflow.
 - The tracked migration sequence, `SCHEMA_REFERENCE.sql`, and service queries disagree on announcements, feedback, and resources. A live schema-only comparison is required before a forward-only reconciliation migration is prepared.
 - The `core.users` / `epdg.users` compatibility mirror has no database trigger. Application-managed dual writes are now transactional and fail closed when either row is missing, but live row-level ID, branch-role, and password-hash parity still must be verified without reading or reporting private values.
 - The tracked schema does not define a reviewed RLS/grant matrix for `core` and `epdg` objects.
 - CV and submission storage access needs a reviewed private-file delivery contract. No public-bucket or long-lived-link migration was applied.
 - Certificate issuance storage, portfolio storage, mentor-session lifecycle/feedback, legal agreement versioning, and the complete company/school/mentor/admin permission matrix remain blocked.
-- The authoritative Railway project, service, repository mapping, root directory, and public API origin remain unverified.
+- The Railway mapping is verified, but the exact-head deployment is failed with
+  PostgreSQL authentication code `28P01`; the mapped host was unavailable in
+  current probes and is not release evidence.
 - Certificate links now require the configured `FRONTEND_URL`; the service no longer falls back to an unverified domain.
-- Local backend commits `9c41b24` and `cc605ca` preserve the runtime/authentication stabilization. No database migration, Railway deployment, production environment update, or push was performed during this audit.
+- Backend PR #2 preserves the runtime/authentication stabilization. No live
+  database migration or successful current-head Railway deployment is
+  represented by this audit.
 
-## Latest local verification
+## Recorded local verification
 
 - Root tests: `9` passed, `0` failed.
 - EPDG TypeScript build: passed with no compile errors.
@@ -181,7 +193,16 @@ The active frontend calls under `epdg/src` were compared with this inventory.
 - EPDG lint: exit `0`, `0` errors, `161` warnings. The warnings were not suppressed.
 - `git diff --check`: passed with line-ending conversion notices only.
 
-These results apply to the preserved local release worktree. They are not deployment evidence. No Railway deployment, production environment-variable change, database migration, storage change, or merge has occurred.
+These July 11-12 results apply only to the earlier preserved release worktree.
+They are not evidence for later changes or deployment. Re-run the current source
+before release. No successful current-head Railway deployment, database
+migration, storage change, or merge has occurred.
+
+The July 25 uncommitted safety working tree, based on `f6f8670`, passed root
+tests `9/9`, EPDG build, EPDG route/release-safety tests `48/48`, and EPDG lint
+with `0` errors and `161` existing warnings. The smoke script also rejected a
+missing origin with the expected privacy-safe failure. These results must be
+repeated after commit and do not satisfy the Railway or live-database gates.
 
 ## Rollback boundary
 

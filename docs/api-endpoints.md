@@ -1,6 +1,11 @@
 # API Endpoints
 
-This file documents the root JavaScript foundation service. The separate EPDG TypeScript route surface and frontend compatibility status are controlled by [BACKEND_ROUTE_AUDIT.md](BACKEND_ROUTE_AUDIT.md). The authoritative Railway service/root mapping is not yet proven, and no deployment is implied by this inventory.
+This file documents the root JavaScript foundation service. The separate EPDG
+TypeScript route surface and frontend compatibility status are controlled by
+[BACKEND_ROUTE_AUDIT.md](BACKEND_ROUTE_AUDIT.md). Authenticated provider
+evidence maps Railway to the EPDG TypeScript service under
+`/epdg-backend-core`; this root inventory does not imply that the mapped
+deployment is healthy.
 
 ## Health
 

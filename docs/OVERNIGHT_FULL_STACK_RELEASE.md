@@ -143,3 +143,71 @@ The provider's Git integration attempted and failed a deployment after the branc
 - Do not treat CORS as verified until the hardened backend commit is deployed and exact preflight checks return the requested origin for both production and PR preview while continuing to deny an untrusted origin.
 
 No backend merge, successful backend code deployment, database migration, Edge Function deployment, or frontend merge occurred during this step. If the next deployment regresses health or route guards, roll back the Railway service to its last known-good deployment and retain the explicit origin allowlist for the corrected release.
+
+## 2026-07-25 - Backend release-safety reconciliation
+
+### Current provider evidence
+
+- The single Railway target is recorded in
+  `docs/RAILWAY_DEPLOYMENT_MANIFEST.md`: project `epdg platform`, service
+  `tranquil-tenderness`, repository
+  `webdev692/THE-EMERSON-EMPIRE_Backend`, and root
+  `/epdg-backend-core`.
+- Backend PR #2 remains draft at audited head `f6f8670`.
+- The exact-head Railway status remains failed. The build succeeds, but startup
+  exits at the database stage with PostgreSQL code `28P01`; no credential value
+  was read, logged, copied, or changed.
+- Read-only probes found the mapped `production_epdg` host unavailable.
+  Historical `backend-*`, `the-emerson-empirebackend-*`, and PR-preview hosts
+  returned Railway `Application not found` or were unavailable. None is release
+  evidence.
+
+### Local safety changes prepared
+
+- Added an exact, LF-normalized `001`-`033` source-only migration evidence
+  baseline.
+- Kept historical SQL and hashes unchanged. Migrations `011` and `024` are
+  already applied in the live ledger and are never pending.
+- Removed application-side migration execution and the
+  `postgres-migrations` runtime dependency. The build rejects unexpected
+  source filenames, clears stale copied artifacts, and excludes all historical
+  SQL from `dist`.
+- Added a credential-free-origin EPDG readiness smoke script and focused tests
+  for baseline exclusion, fail-closed behavior, and the readiness contract.
+- Reconciled deployment documentation around the one mapped target, historical
+  origins, separate `DB_*` connection method, and safe names-only credential
+  verification.
+
+### Working-tree verification
+
+Using Node `22.23.1` and npm `11.17.0`:
+
+- Root security tests: `9/9` passed.
+- EPDG build: passed.
+- EPDG route/release-safety tests: `47/47` passed.
+- EPDG lint: exit `0`, `0` errors, `161` existing warnings.
+- Missing `EPDG_API_ORIGIN` smoke invocation: rejected with the expected
+  privacy-safe exit and error type only.
+
+These results apply to the uncommitted working tree based on `f6f8670`. They
+must be repeated after commit and do not prove a Railway deployment or live
+database contract.
+
+### Live migration-ledger verification
+
+A metadata-only comparison on 2026-07-25 confirmed that the live
+`public.migrations` ledger contains bootstrap ID `0` and the complete
+repository baseline at IDs `1`-`33`. All 33 names and
+`postgres-migrations` SHA-1 values match the repository files after normalizing
+the Windows checkout to the LF line endings used by the deployment runtime.
+The destructive historical migrations `011` and `024` are already represented
+in that ledger and are therefore baseline-only, never pending. No migration or
+application row was executed, repaired, or changed by this comparison.
+
+### External state and release boundary
+
+No backend database migration, Railway deployment, provider environment
+change, storage change, merge, commit, or push occurred during this step.
+Railway database authentication, exact-head health/CORS/auth probes, live
+schema parity beyond the proven migration ledger, and the reviewed RLS/grant
+model remain release blockers.

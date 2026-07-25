@@ -22,9 +22,10 @@ Next step:
 
 ### Health
 
-- [ ] `GET /health` works locally.
-- [ ] `GET /health` works on Railway.
-- [ ] Database status returns `ok` after `DATABASE_URL` is configured.
+- [ ] Root foundation `GET /health` works locally when `DATABASE_URL` is configured.
+- [ ] EPDG `GET /health` works locally with the separate `DB_*` variables.
+- [ ] EPDG `npm run smoke:health` passes against the exact Railway deployment.
+- [ ] The Railway response is from the expected commit and readiness returns `ok`.
 
 ### Agency
 
@@ -36,9 +37,11 @@ Next step:
 
 ### EPDG
 
-- [ ] Missing submission fields return `400`.
-- [ ] Invalid `fileUrl` returns `400`.
-- [ ] Valid deliverable submission returns `201` after table mapping is confirmed.
+- [x] Missing submission fields fail closed with `503`.
+- [x] Invalid `fileUrl` fails closed with `503`.
+- [x] A syntactically valid deliverable submission also returns `503`; private
+  submission writes remain unavailable until ownership, storage, and delivery
+  contracts are approved.
 
 ### Public Contributions
 
@@ -53,6 +56,10 @@ Next step:
 
 ## Current Blockers
 
-- Railway logs are not directly visible in this chat.
+- Exact-head Railway startup fails with PostgreSQL authentication code `28P01`.
+- The mapped Railway host is not currently healthy.
 - Supabase RLS policy review is still required.
+- Live migration-ledger parity is proven for bootstrap ID `0` and repository
+  IDs `1`-`33`: all names and deployment-normalized hashes match. Broader live
+  schema/role parity remains blocked from release approval.
 - Agency tables may need to be created or aligned before Agency routes can be used in production.
