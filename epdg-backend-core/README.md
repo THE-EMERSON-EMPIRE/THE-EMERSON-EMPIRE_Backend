@@ -1,78 +1,61 @@
-# Express.js + TypeScript Backend Project
+# EPDG backend core
 
-A professional, scalable backend skeleton built with Node.js, Express.js, and TypeScript.
+Express and TypeScript API for the EPDG platform.
 
-## Quick Start
+## Local workflow
 
-```bash
-# Install dependencies
-npm install
+Use Node.js `22.23.1` and npm `11.17.0`.
 
-# Start development server (with auto-restart)
-npm run dev
-
-# Build for production
+```text
+npm ci
 npm run build
-
-# Start production server
-npm start
-
-# Check code quality
 npm run lint
-npm run lint:fix
+npm test
 ```
 
-## Features
+The July 11-12 recorded release-worktree results were: build passed,
+route/security tests passed `38/38`, and lint exited `0` with `0` errors and
+`161` unsuppressed warnings. Treat these as historical evidence and re-run the
+current source before release.
 
-✅ **Express.js** - Fast, minimal web framework  
-✅ **TypeScript** - Type-safe JavaScript  
-✅ **ESLint** - Code quality and style  
-✅ **nodemon** - Auto-restart on file changes  
-✅ **ts-node** - Run TypeScript directly  
-✅ **Environment Variables** - Secure configuration  
-✅ **Clean Architecture** - MVC pattern with routes, controllers, services, models  
+Current July 25 working-tree verification, based on `f6f8670` plus the
+uncommitted release-safety changes: build passed, tests passed `47/47`, and lint
+exited `0` with `0` errors and the same `161` existing warnings. Repeat these
+checks after commit and against the exact deployment.
 
-## Folder Structure
+Populate a local `.env` from the variable names in `.env.example`. Never commit the populated file.
 
-- **routes/** - API endpoint definitions
-- **controllers/** - HTTP request handlers
-- **services/** - Business logic layer
-- **middlewares/** - Request/response interceptors
-- **models/** - Data structure definitions
-- **config/** - Configuration files
-- **utils/** - Helper functions and utilities
+The server validates core configuration, connects to the database, and only
+then listens. The application contains no database-migration execution path.
+Historical migrations `001`-`033` are source-only audit evidence, use enforced
+LF line endings, and are excluded from the compiled runtime artifact.
+Destructive files `011` and `024` therefore cannot be executed by this service.
+Any future database change requires a separately reviewed, forward-only
+operator workflow and compensating plan.
 
-## Environment Setup
+Run a readiness smoke only against an explicit credential-free origin:
 
-1. Copy `.env.example` to `.env`
-2. Update values as needed:
-   ```
-   PORT=3000
-   NODE_ENV=development
-   ```
+```powershell
+$env:EPDG_API_ORIGIN='https://reviewed-api-origin.example'
+npm run smoke:health
+```
 
-## Default Port
+```sh
+EPDG_API_ORIGIN=https://reviewed-api-origin.example npm run smoke:health
+```
 
-Server runs on `http://localhost:3000` by default.
+The current Railway mapping and database-authentication blocker are documented
+in `../docs/RAILWAY_DEPLOYMENT_MANIFEST.md`.
 
-Health check: `GET http://localhost:3000/health`
+Production browser origins come only from `CORS_ORIGINS`; hardcoded production domains are intentionally absent. Development mode permits the documented local Vite origins.
 
-## Documentation
+Current fail-closed boundaries:
 
-See [BACKEND_GUIDE.md](./BACKEND_GUIDE.md) for detailed explanation of:
-- What each tool does (Node.js, Express, TypeScript, etc.)
-- What goes in each folder
-- How the architecture works
-- Best practices and examples
+- There is no mounted `POST /api/signup`; supported public registration is `POST /api/auth/register`.
+- `POST /api/auth/refresh`, anonymous CV upload, agreement acceptance, legacy onboarding completion, private submission writes, intern session rating, and certificate issuance return `503`.
+- `/api/portfolio/*`, company dashboard APIs, and school dashboard APIs are not mounted.
+- Opportunity routes exist for approved admins and interns, but the active frontend has no opportunity API consumer.
 
-## Scripts
+Do not enable the blocked routes by configuration alone. The final role matrix, session lifecycle, private storage ownership/delivery, certificate issuance, and tracked-versus-live schema contracts require review first.
 
-- `npm run dev` - Development server with auto-reload
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm start` - Production server
-- `npm run lint` - Check code quality
-- `npm run lint:fix` - Fix code style automatically
-
----
-
-**Ready to build! Start with uncommenting the user routes in src/index.ts and test the example implementation.**
+The exact API inventory and known missing frontend contracts are documented in `../docs/BACKEND_ROUTE_AUDIT.md`.

@@ -1,58 +1,81 @@
-# Deployment Runbook
+# Deployment and rollback runbook
 
-## Production Target
+No deployment was performed as part of the 2026-07-11 backend audit.
+
+## Selected target
+
+Authenticated provider evidence selects project `epdg platform`, service
+`tranquil-tenderness`, repository `webdev692/THE-EMERSON-EMPIRE_Backend`, and
+service root `/epdg-backend-core`. The mapped production environment is
+`production_epdg`. Exact IDs, the mapped host, current failure, historical
+origin classifications, and safe database checks are maintained only in
+[RAILWAY_DEPLOYMENT_MANIFEST.md](RAILWAY_DEPLOYMENT_MANIFEST.md).
+
+The selection does not establish release health. The current exact-head status
+is failed at the database-authentication stage, so the root JavaScript service
+must not be substituted and no frontend origin should be changed yet.
+
+## EPDG service commands
 
 ```text
-Netlify frontends -> Railway backend API -> Supabase Postgres
+Install: Railway/Nixpacks-managed
+Build: npm run build
+Start: npm start
+Health: /health
+Smoke (PowerShell): `$env:EPDG_API_ORIGIN='<reviewed credential-free origin>'; npm run smoke:health`
+Smoke (POSIX): `EPDG_API_ORIGIN=<reviewed credential-free origin> npm run smoke:health`
 ```
 
-## Railway Service Settings
+The checked-in `epdg-backend-core/railway.toml` encodes those commands. Node and npm versions come from `package.json`.
 
-```text
-Repository: webdev692/THE-EMERSON-EMPIRE_Backend
-Branch: main after PR merge
-Root directory: /
-Install command: npm install
-Start command: npm start
-Health check path: /health
-```
+## Pre-deployment gates
 
-## Required Railway Environment Variables
+- Root tests, EPDG build/tests/lint, diff check, and credential scan pass at the
+  exact commit. July 11-12 results are historical and must be rerun.
+- Required environment variable names are present without logging their values.
+- Production CORS is an explicit allowlist.
+- The application contains no migration execution path, and the build excludes
+  all historical SQL from the runtime artifact.
+- The source-only `001`-`033` audit baseline matches live history; historical
+  destructive migrations `011` and `024` are already applied and never pending.
+- Every future database change uses a separately reviewed forward-only operator
+  workflow with a compensating plan.
+- A live schema-only comparison resolves announcement, feedback, and resource drift.
+- `npm run smoke:health` passes against the exact deployed commit.
+- Current-commit protected routes return `401` or `403`, not `404`; this must be verified against the same Railway deployment commit.
+- Fail-closed routes remain fail-closed: `/api/auth/refresh`, `/api/upload/cv`, agreement acceptance, legacy onboarding completion, private submission writes, intern session rating, and certificate issuance.
+- Unmounted compatibility paths remain documented as unavailable: `/api/signup`, `/api/portfolio/*`, company dashboard APIs, and school dashboard APIs.
 
-```env
-NODE_ENV=production
-PORT=3000
-DATABASE_URL=<Supabase Postgres connection string>
-CORS_ALLOWED_ORIGINS=https://theemerson.netlify.app,https://emersonagency.netlify.app,https://emersonprofessionaldevelopment.netlify.app,https://epdg.netlify.app
-PUBLIC_CREDITS_ENABLED=true
-AGENCY_MODULE_ENABLED=true
-EPDG_MODULE_ENABLED=true
-CERTIFICATE_VERIFICATION_ENABLED=true
-```
+## Unresolved release blockers
 
-## Netlify Environment Variables
+- PostgreSQL authentication failure `28P01`; the separate production and PR
+  `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_SSL`
+  presence/pairing must be verified without recording values.
+- No successful exact-head Railway deployment or healthy canonical API origin.
+- The final company, school, intern, mentor, administrator, and founder role/permission matrix.
+- The mentor-session state machine, scheduling ownership, update/cancellation permissions, and rating/notes visibility rules.
+- Private CV, submission, portfolio, and certificate storage ownership, bucket policy, upload, and time-limited delivery contracts.
+- Tracked-versus-live schema drift for announcements, feedback, resources, and identity mirrors.
+- School registration field normalization: the database uses the lowercase school-type enum and stores location in `schools.county`; the current frontend values and displayed `country` field need an agreed mapping.
+- Backend-only opportunity routes have no active frontend consumer or end-to-end verification.
 
-The EPDG dashboard should point to the public Railway API URL:
+## Environment changes
 
-```env
-VITE_API_URL=https://backend-production-4b0a9.up.railway.app
-VITE_MOCK_AUTH=false
-```
+Record environment changes by variable name only. Never copy values into this
+repository or release evidence. The service mapping is known, but frontend API
+origin changes remain blocked until the mapped host is healthy at the exact
+reviewed commit.
 
-Do not add `DATABASE_URL`, Supabase service-role keys, or private API secrets to Netlify frontend sites.
+Do not change `VITE_API_URL`, database, email, storage, or signing variables
+until the release gates pass. `CORS_ORIGINS` was updated by name on July 12;
+verify its presence and behavior without recording its value.
 
-## Deployment Verification
+## Rollback
 
-1. Railway deploy completes without crashing.
-2. Open `https://backend-production-4b0a9.up.railway.app/health`.
-3. Confirm response includes `service: the-emerson-empire-backend`.
-4. Confirm database status is `ok` after `DATABASE_URL` is configured.
-5. Confirm Netlify EPDG dashboard still loads.
-6. Confirm no database secrets are exposed in frontend code or Netlify public env vars.
+For a code-only Railway release, select the last verified deployment for the same service and commit, redeploy it, and re-run `/health`, CORS, and unauthenticated protected-route checks. Do not roll back by rewriting Git history.
 
-## Known Risks
+Database changes require their own reviewed compensating migration. Never drop, truncate, reset, or restore over production records as an application rollback shortcut.
 
-- Railway cannot work until the backend repo contains a valid `package.json` and `npm start` script.
-- Agency routes require Agency tables to exist in Supabase.
-- EPDG routes depend on existing EPDG table names and may need refinement as frontend forms are finalized.
-- Supabase RLS must be reviewed before exposing direct client-side Supabase access.
+Current release state: no successful backend code deployment, live migration,
+external storage change, or merge. The July 12 names-only `CORS_ORIGINS`
+provider change is recorded in the release journal.

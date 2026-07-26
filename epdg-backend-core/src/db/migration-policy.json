@@ -1,0 +1,42 @@
+{
+  "baselineFiles": [
+    "001-create_users_table.sql",
+    "002-create_companies_table.sql",
+    "003-create_schools_table.sql",
+    "004-create_intern_profiles_table.sql",
+    "005-create_internship_slots_table.sql",
+    "006-create_applications_table.sql",
+    "007-create_placements_table.sql",
+    "008-create_tasks_table.sql",
+    "009-create_submissions_table.sql",
+    "010-create_milestones_table.sql",
+    "011-create_admins_table.sql",
+    "012-add_approval_fields.sql",
+    "013-intern-profile-updates.sql",
+    "014-intern-application-fields.sql",
+    "015-add_extracted_skills_to_applications.sql",
+    "016-allow-admin-created-slots.sql",
+    "017-partial-unique-email.sql",
+    "018-mentor-capacity.sql",
+    "019-force-password-change.sql",
+    "020-certificates.sql",
+    "021-fix-certificates-schema.sql",
+    "022-wf-08-15-tables.sql",
+    "023-audit-log.sql",
+    "024-fix-certificates-table.sql",
+    "025-intern-workflow-tables.sql",
+    "026-admin-types-and-placement-create.sql",
+    "027-onboarding-flow.sql",
+    "028-opportunities.sql",
+    "029-roadmap-system.sql",
+    "030-roadmap-level-up-request.sql",
+    "031-career-file-system.sql",
+    "032-move-to-epdg-schema.sql",
+    "033-create-core-schema-and-migrate-users.sql"
+  ],
+  "blockedHistoricalFiles": [
+    "011-create_admins_table.sql",
+    "024-fix-certificates-table.sql"
+  ],
+  "reviewedForwardFiles": []
+}
