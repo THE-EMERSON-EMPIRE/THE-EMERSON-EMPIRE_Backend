@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { randomUUID } from 'crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import type { PoolClient } from 'pg';
 import { getPool } from '../db';
 import { logger } from '../utils/logger';
@@ -9,6 +9,32 @@ import { createDualWriteUser } from '../utils/coreIdentity';
 import { requireEnvironmentVariable } from '../config/env';
 
 const SALT_ROUNDS = 12;
+const PASSWORD_RESET_VERSION_CONTEXT = 'password-reset:v1:';
+
+export function createPasswordResetVersion(
+  passwordHash: string,
+  jwtSecret: string,
+): string {
+  return createHmac('sha256', jwtSecret)
+    .update(PASSWORD_RESET_VERSION_CONTEXT)
+    .update(passwordHash)
+    .digest('base64url');
+}
+
+export function passwordResetVersionMatches(
+  candidate: unknown,
+  passwordHash: string,
+  jwtSecret: string,
+): boolean {
+  if (typeof candidate !== 'string') return false;
+
+  const expected = Buffer.from(
+    createPasswordResetVersion(passwordHash, jwtSecret),
+    'utf8',
+  );
+  const received = Buffer.from(candidate, 'utf8');
+  return expected.length === received.length && timingSafeEqual(expected, received);
+}
 
 function getResend(): Resend {
   if (!process.env.RESEND_API_KEY) {
@@ -462,9 +488,14 @@ export class AuthService {
     }
 
     const user = result.rows[0];
+    const jwtSecret = requireEnvironmentVariable('JWT_SECRET');
     const resetToken = jwt.sign(
-      { id: user.id, purpose: 'password_reset' },
-      requireEnvironmentVariable('JWT_SECRET'),
+      {
+        id: user.id,
+        purpose: 'password_reset',
+        password_version: createPasswordResetVersion(user.password, jwtSecret),
+      },
+      jwtSecret,
       { algorithm: 'HS256', expiresIn: '30m' }
     );
 
@@ -479,37 +510,57 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
-    let decoded: { id: number; purpose: string };
+    let decoded: {
+      id?: unknown;
+      purpose?: unknown;
+      password_version?: unknown;
+    };
+    const jwtSecret = requireEnvironmentVariable('JWT_SECRET');
     try {
       decoded = jwt.verify(
         token,
-        requireEnvironmentVariable('JWT_SECRET'),
+        jwtSecret,
         { algorithms: ['HS256'] },
-      ) as { id: number; purpose: string };
+      ) as {
+        id?: unknown;
+        purpose?: unknown;
+        password_version?: unknown;
+      };
     } catch {
       throw new Error('Invalid or expired reset token');
     }
 
-    if (decoded.purpose !== 'password_reset') {
-      throw new Error('Invalid reset token');
+    if (
+      decoded.purpose !== 'password_reset' ||
+      !Number.isInteger(decoded.id) ||
+      Number(decoded.id) < 1 ||
+      typeof decoded.password_version !== 'string'
+    ) {
+      throw new Error('Invalid or expired reset token');
     }
-
-    const pool = getPool();
-
-    const result = await pool.query(
-      `SELECT cu.* FROM core.users cu
-       JOIN epdg.users eu ON eu.id = cu.id AND eu.deleted_at IS NULL
-       WHERE cu.id = $1 AND cu.deleted_at IS NULL`,
-      [decoded.id]
-    );
-
-    if (result.rows.length === 0) {
-      throw new Error('User not found');
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
 
     await withTransaction(async (client) => {
+      const result = await client.query(
+        `SELECT cu.password FROM core.users cu
+         JOIN epdg.users eu ON eu.id = cu.id AND eu.deleted_at IS NULL
+         WHERE cu.id = $1 AND cu.deleted_at IS NULL
+         FOR UPDATE OF cu`,
+        [decoded.id],
+      );
+
+      if (
+        result.rows.length === 0 ||
+        typeof result.rows[0].password !== 'string' ||
+        !passwordResetVersionMatches(
+          decoded.password_version,
+          result.rows[0].password,
+          jwtSecret,
+        )
+      ) {
+        throw new Error('Invalid or expired reset token');
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
       const coreUpdate = await client.query(
         'UPDATE core.users SET password = $1 WHERE id = $2 AND deleted_at IS NULL RETURNING id',
         [hashedPassword, decoded.id],

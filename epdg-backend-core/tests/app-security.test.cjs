@@ -27,7 +27,11 @@ const { validateEnvironment } = require('../dist/config/env.js');
 const databaseModule = require('../dist/db/index.js');
 const { sanitizeServerErrors } = require('../dist/middlewares/sanitizeServerErrors.js');
 const { AdminService } = require('../dist/services/AdminService.js');
-const { AuthService } = require('../dist/services/AuthService.js');
+const {
+  AuthService,
+  createPasswordResetVersion,
+  passwordResetVersionMatches,
+} = require('../dist/services/AuthService.js');
 const { isAllowedCvUrl } = require('../dist/utils/cvParser.js');
 const { escapeHtml, sanitizeEmailSubject } = require('../dist/utils/emailSafety.js');
 const { authMiddleware, mentorGuard, roleGuard } = require('../dist/middlewares/auth.js');
@@ -193,6 +197,117 @@ test('password-reset JWTs cannot authenticate or mint access tokens', async () =
   await assert.rejects(
     () => new AuthService().refreshToken(resetToken),
     /Invalid access token/,
+  );
+});
+
+test('password-reset versions are privacy-safe and invalidated by a password change', () => {
+  const oldPasswordHash = '$2b$12$old-password-hash-fixture';
+  const newPasswordHash = '$2b$12$new-password-hash-fixture';
+  const version = createPasswordResetVersion(oldPasswordHash, process.env.JWT_SECRET);
+
+  assert.equal(version.includes(oldPasswordHash), false);
+  assert.equal(passwordResetVersionMatches(
+    version,
+    oldPasswordHash,
+    process.env.JWT_SECRET,
+  ), true);
+  assert.equal(passwordResetVersionMatches(
+    version,
+    newPasswordHash,
+    process.env.JWT_SECRET,
+  ), false);
+  assert.equal(passwordResetVersionMatches(
+    undefined,
+    oldPasswordHash,
+    process.env.JWT_SECRET,
+  ), false);
+});
+
+test('password-reset tokens are single-use after the first successful reset', async () => {
+  const originalGetPool = databaseModule.getPool;
+  const originalFrontendUrl = process.env.FRONTEND_URL;
+  const initialPasswordHash = '$2b$12$initial-password-hash-fixture';
+  let currentPasswordHash = initialPasswordHash;
+  let resetUrl;
+  const transactionCommands = [];
+
+  const client = {
+    async query(sql, params = []) {
+      const normalized = String(sql).replace(/\s+/g, ' ').trim();
+      transactionCommands.push(normalized);
+      if (normalized === 'BEGIN' || normalized === 'COMMIT' || normalized === 'ROLLBACK') {
+        return { rows: [], rowCount: null };
+      }
+      if (normalized.startsWith('SELECT cu.password')) {
+        assert.match(normalized, /FOR UPDATE OF cu$/);
+        return { rows: [{ password: currentPasswordHash }], rowCount: 1 };
+      }
+      if (normalized.startsWith('UPDATE core.users')) {
+        currentPasswordHash = params[0];
+        return { rows: [{ id: 41 }], rowCount: 1 };
+      }
+      if (normalized.startsWith('UPDATE epdg.users')) {
+        return { rows: [{ id: 41 }], rowCount: 1 };
+      }
+      throw new Error('Unexpected password-reset query in test');
+    },
+    release() {},
+  };
+  const pool = {
+    async query(sql, params = []) {
+      const normalized = String(sql).replace(/\s+/g, ' ').trim();
+      assert.match(normalized, /^SELECT cu\.\* FROM core\.users cu/);
+      assert.deepEqual(params, ['qa-password-reset@example.invalid']);
+      return {
+        rows: [{
+          id: 41,
+          email: 'qa-password-reset@example.invalid',
+          password: initialPasswordHash,
+        }],
+        rowCount: 1,
+      };
+    },
+    connect: async () => client,
+  };
+
+  databaseModule.getPool = () => pool;
+  process.env.FRONTEND_URL = 'https://qa.example.invalid';
+  try {
+    const service = new AuthService();
+    service.sendPasswordResetEmail = async (email, url) => {
+      assert.equal(email, 'qa-password-reset@example.invalid');
+      resetUrl = url;
+    };
+
+    await service.forgotPassword('qa-password-reset@example.invalid');
+    const resetToken = new URL(resetUrl).searchParams.get('token');
+    assert.ok(resetToken);
+
+    await service.resetPassword(resetToken, 'First-new-password-1!');
+    await assert.rejects(
+      () => service.resetPassword(resetToken, 'Replay-password-2!'),
+      /Invalid or expired reset token/,
+    );
+  } finally {
+    databaseModule.getPool = originalGetPool;
+    if (originalFrontendUrl === undefined) {
+      delete process.env.FRONTEND_URL;
+    } else {
+      process.env.FRONTEND_URL = originalFrontendUrl;
+    }
+  }
+
+  assert.equal(
+    transactionCommands.filter((command) => command.startsWith('UPDATE core.users')).length,
+    1,
+  );
+  assert.equal(
+    transactionCommands.filter((command) => command.startsWith('UPDATE epdg.users')).length,
+    1,
+  );
+  assert.deepEqual(
+    transactionCommands.map((command) => command.split(' ')[0]),
+    ['BEGIN', 'SELECT', 'UPDATE', 'UPDATE', 'COMMIT', 'BEGIN', 'SELECT', 'ROLLBACK'],
   );
 });
 
