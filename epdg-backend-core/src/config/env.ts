@@ -1,3 +1,5 @@
+import { getDatabaseSslConfig } from '../db/tls';
+
 export type RuntimeEnvironment = 'development' | 'test' | 'production';
 
 export interface RuntimeConfig {
@@ -20,6 +22,7 @@ const CORE_REQUIRED_VARIABLES = [
 
 const PRODUCTION_REQUIRED_VARIABLES = [
   'CORS_ORIGINS',
+  'SUPABASE_DB_CA_CERT',
 ] as const;
 
 function hasValue(value: string | undefined): value is string {
@@ -127,6 +130,8 @@ export function validateEnvironment(
   if (nodeEnv === 'production' && env.DB_SSL === 'false') {
     throw new Error('DB_SSL cannot disable certificate verification in production.');
   }
+
+  getDatabaseSslConfig(env);
 
   return {
     nodeEnv,

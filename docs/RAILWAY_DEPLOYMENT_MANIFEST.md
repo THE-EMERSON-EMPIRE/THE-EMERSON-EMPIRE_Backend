@@ -50,6 +50,7 @@ The EPDG service reads these database variable names:
 - `DB_USER`
 - `DB_PASSWORD`
 - `DB_SSL`
+- `SUPABASE_DB_CA_CERT`
 - `DB_CONNECTION_TIMEOUT_MS`
 - `DB_STATEMENT_TIMEOUT_MS`
 
@@ -65,9 +66,12 @@ values:
    or pooler tuple; do not mix fields from the two connection modes.
 2. Confirm `DB_PASSWORD` is the current password for that tuple.
 3. Confirm `DB_SSL` is not `false` in production.
-4. Compare the names and presence status independently in `production_epdg`
+4. Confirm `SUPABASE_DB_CA_CERT` is present in protected settings and parses as
+   a currently valid PEM CA certificate; never print or copy its value into
+   logs or release notes.
+5. Compare the names and presence status independently in `production_epdg`
    and the PR #2 environment; do not assume Railway copies later changes.
-5. Redeploy the exact reviewed head, then run the following without printing
+6. Redeploy the exact reviewed head, then run the following without printing
    environment values:
 
    PowerShell: `$env:EPDG_API_ORIGIN='<origin>'; npm run smoke:health`

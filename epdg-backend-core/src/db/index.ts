@@ -1,20 +1,7 @@
 import { Pool } from 'pg';
+import { getDatabaseSslConfig } from './tls';
 
 let pool: Pool | null = null;
-
-function getSslConfig() {
-  if (process.env.DB_SSL === 'true') {
-    return { rejectUnauthorized: true };
-  }
-  if (
-    process.env.NODE_ENV === 'production' ||
-    process.env.DB_HOST?.endsWith('.supabase.com') ||
-    process.env.DB_HOST?.endsWith('.supabase.co')
-  ) {
-    return { rejectUnauthorized: true };
-  }
-  return false;
-}
 
 export function getPool(): Pool {
   if (!pool) {
@@ -30,7 +17,7 @@ export function getPool(): Pool {
       database: process.env.DB_NAME,
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
-      ssl: getSslConfig(),
+      ssl: getDatabaseSslConfig(),
       options: '-c search_path=epdg,public',
       connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 5000),
       statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 15000),

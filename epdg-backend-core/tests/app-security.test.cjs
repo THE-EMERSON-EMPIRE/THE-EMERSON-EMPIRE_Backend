@@ -1,13 +1,26 @@
 'use strict';
 
 const assert = require('node:assert/strict');
+const { X509Certificate } = require('node:crypto');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
+const { rootCertificates } = require('node:tls');
 const { after, before, test } = require('node:test');
 const jwt = require('jsonwebtoken');
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-only-jwt-secret-with-at-least-32-characters';
+const testCaCertificate = rootCertificates
+  .map((pem) => ({ pem, certificate: new X509Certificate(pem) }))
+  .filter(({ certificate }) => (
+    certificate.ca &&
+    Date.parse(certificate.validFrom) <= Date.now() &&
+    Date.parse(certificate.validTo) > Date.now()
+  ))
+  .sort((left, right) => (
+    Date.parse(right.certificate.validTo) - Date.parse(left.certificate.validTo)
+  ))[0]?.pem;
+assert.ok(testCaCertificate, 'Node must provide at least one trusted CA fixture');
 
 const { createApp } = require('../dist/app.js');
 const { validateEnvironment } = require('../dist/config/env.js');
@@ -386,6 +399,7 @@ test('production database TLS cannot disable certificate verification', () => {
     CERT_SIGNING_SECRET: 'test-only-certificate-signing-secret',
     CORS_ORIGINS: 'https://frontend.example.invalid',
     DB_SSL: 'false',
+    SUPABASE_DB_CA_CERT: testCaCertificate,
   };
   assert.throws(
     () => validateEnvironment(productionEnvironment),
@@ -410,6 +424,7 @@ test('production URLs, CORS origins, and signing secrets fail closed', () => {
     SUPABASE_SERVICE_ROLE_KEY: 'test-only-service-role-key',
     CERT_SIGNING_SECRET: 'test-only-certificate-signing-secret',
     CORS_ORIGINS: 'https://frontend.example.invalid',
+    SUPABASE_DB_CA_CERT: testCaCertificate,
   };
 
   assert.throws(
