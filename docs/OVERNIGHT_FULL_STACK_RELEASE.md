@@ -118,9 +118,11 @@ The verification above is local worktree evidence only. No backend deployment, R
 
 - GitHub attached a Railway status to exact backend head `f7298b3` with context `epdg platform - tranquil-tenderness`.
 - The status identifies Railway project `34659053-7658-4d6e-8d0e-469f91ec6058` and service `fccb017f-ec3a-472e-ab19-f72011bf84f7`, proving a repository-to-service integration for this commit.
-- The current-head Railway status is `failure`; it is not release verification and must not be converted to success without deployment logs and a current-commit health check.
+- The Railway status for the then-current head was `failure`; it was not release
+  verification and could not be converted to success without deployment logs
+  and a current-commit health check.
 - Railway CLI authentication remained unavailable after the browser OAuth flow timed out, so the failed deployment logs, configured root directory, environment names, and runtime database role could not be inspected.
-- Read-only public probes found `https://tranquil-tenderness-productionepdg.up.railway.app/health` at `200` and `OPTIONS /api/auth/login` at `204`. That running host predates the failed current-head deployment and is not evidence that `f7298b3` is live.
+- Read-only public probes found `https://tranquil-tenderness-productionepdg.up.railway.app/health` at `200` and `OPTIONS /api/auth/login` at `204`. That running host predated the failed then-current-head deployment and was not evidence that `f7298b3` was live.
 - No production environment-variable value was read, printed, or changed.
 
 ### Updated release and rollback boundary
@@ -139,22 +141,26 @@ The provider's Git integration attempted and failed a deployment after the branc
 ### CORS environment preparation
 
 - Added the non-secret `CORS_ORIGINS` variable to `production_epdg` with only the canonical production frontend and PR #27 preview origins; no wildcard was used and no secret value was read or printed.
-- Railway applied the variable change. The currently running older backend still accepts the production origin (`204`) but rejects both the PR preview and an untrusted origin (`500`), proving the old deployment does not consume the new environment-driven allowlist.
+- Railway applied the variable change. The then-running older backend accepted
+  the production origin (`204`) but rejected both the PR preview and an
+  untrusted origin (`500`), proving that deployment did not consume the new
+  environment-driven allowlist.
 - Do not treat CORS as verified until the hardened backend commit is deployed and exact preflight checks return the requested origin for both production and PR preview while continuing to deny an untrusted origin.
 
 No backend merge, successful backend code deployment, database migration, Edge Function deployment, or frontend merge occurred during this step. If the next deployment regresses health or route guards, roll back the Railway service to its last known-good deployment and retain the explicit origin allowlist for the corrected release.
 
 ## 2026-07-25 - Backend release-safety reconciliation
 
-### Current provider evidence
+### Provider evidence at that time (superseded on 2026-07-26)
 
 - The single Railway target is recorded in
   `docs/RAILWAY_DEPLOYMENT_MANIFEST.md`: project `epdg platform`, service
   `tranquil-tenderness`, repository
   `webdev692/THE-EMERSON-EMPIRE_Backend`, and root
   `/epdg-backend-core`.
-- Backend PR #2 remains draft at audited head `f6f8670`.
-- The exact-head Railway status remains failed. The build succeeds, but startup
+- Backend PR #2 was draft at historical release head `f6f8670`.
+- The Railway status for that historical head was failed. The build succeeded,
+  but startup
   exits at the database stage with PostgreSQL code `28P01`; no credential value
   was read, logged, copied, or changed.
 - Read-only probes found the mapped `production_epdg` host unavailable.
@@ -178,7 +184,7 @@ No backend merge, successful backend code deployment, database migration, Edge F
   origins, separate `DB_*` connection method, and safe names-only credential
   verification.
 
-### Working-tree verification
+### Working-tree verification at that time
 
 Using Node `22.23.1` and npm `11.17.0`:
 
@@ -204,10 +210,87 @@ The destructive historical migrations `011` and `024` are already represented
 in that ledger and are therefore baseline-only, never pending. No migration or
 application row was executed, repaired, or changed by this comparison.
 
-### External state and release boundary
+### External state and release boundary at that time
 
 No backend database migration, Railway deployment, provider environment
 change, storage change, merge, commit, or push occurred during this step.
 Railway database authentication, exact-head health/CORS/auth probes, live
 schema parity beyond the proven migration ledger, and the reviewed RLS/grant
-model remain release blockers.
+model remained release blockers at that time.
+
+The release-candidate blockers in this July 25 section were superseded by the
+verified July 26 PR-environment evidence below. The separate schema and
+RLS/grant decisions were not changed by the runtime recovery.
+
+## 2026-07-26 - Exact-head Railway recovery and authenticated release gate
+
+### Superseding release-candidate evidence
+
+- Prior verified runtime code head:
+  `138608083efe273e7bd20ecd101a0efa5b6700f5`.
+- Successful Railway PR deployment:
+  `16c0c861-1d01-40fa-bed8-0330c1f88460`.
+- PR environment origin:
+  `https://tranquil-tenderness-the-emerson-empirebackend-pr-2.up.railway.app`.
+- Builder/runtime: Nixpacks with Node `v22.14.0`.
+- The application loaded and validated the protected Supabase CA certificate,
+  retained `rejectUnauthorized: true`, completed strict-TLS database
+  authentication, and completed a fresh `SELECT 1`.
+- Production configuration validation and database readiness completed before
+  the application listened on the Railway port.
+- `GET /health` returned HTTP `200` with the intended healthy response.
+- No `SELF_SIGNED_CERT_IN_CHAIN`, PostgreSQL `28P01`, or startup migration
+  activity remained in the verified deployment evidence.
+
+### CORS, authentication, and isolation evidence
+
+- The configured approved production frontend and PR #27 preview origins were
+  accepted with exact allow-origin headers.
+- An untrusted origin was rejected with HTTP `403` and no allow-origin header.
+- A clearly labeled synthetic pending-company identity signed in successfully,
+  and the self-scoped `GET /api/auth/me` route returned `200`.
+- The same least-privileged role received `403` from
+  `GET /api/admin/stats` before controller or reporting execution.
+- Missing, malformed, correctly signed expired, and previously valid
+  post-cleanup tokens returned `401`.
+- The identity had no profile or related application, assignment, certificate,
+  directory, notification, marketing, or workflow records.
+- The three synthetic identity rows were hard-deleted immediately after the
+  probes. Independent cleanup verification found zero related synthetic rows,
+  and no real user or business record was accessed or modified.
+- Post-cleanup `GET /health` remained HTTP `200`.
+
+### Verified application-code checks and artifact safety
+
+Using Node `22.23.1` and npm `11.17.0` locally:
+
+- Root foundation tests: `9/9` passed.
+- EPDG production build: passed.
+- EPDG tests: `55/55` passed.
+- EPDG lint: exit `0`, zero errors, 161 existing warnings.
+- The built artifact contained no SQL, no `dist/db/migrations`, no migration
+  executor, and no `postgres-migrations` runtime dependency.
+- Build, deployment, runtime, tracked-file, and built-artifact scans found no
+  database URL, password, bearer token, compact JWT, API key, private key, or
+  certificate material.
+- No source credential, QA credential, token, or private identifier was
+  committed or attached to release evidence.
+
+This journal entry is part of a later documentation-only commit and therefore
+does not self-assert that commit's SHA or Railway deployment. Attach the new
+documentation SHA and its exact-deployment verification to PR #2 after both
+exist.
+
+### Release boundary and rollback
+
+Backend PR #2 moved to ready for review but remained open and unmerged. No
+Railway Production environment, frontend file, Netlify production deployment,
+Supabase schema, migration, Edge Function, production record, or real-user
+record changed.
+
+For PR-environment application rollback, redeploy exact runtime code head
+`138608083efe273e7bd20ecd101a0efa5b6700f5` using verified deployment
+`16c0c861-1d01-40fa-bed8-0330c1f88460` as the known-good anchor, then repeat
+strict TLS, `SELECT 1`, readiness, CORS, authentication, cleanup, and
+privacy-safe log checks. No database rollback or migration compensation is
+required for the documentation reconciliation.

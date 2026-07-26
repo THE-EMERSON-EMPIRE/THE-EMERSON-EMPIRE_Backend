@@ -1,11 +1,12 @@
 # Railway deployment manifest
 
-Evidence status: 2026-07-25 (America/New_York).
+Evidence status: 2026-07-26 (America/New_York).
 
-This is the single repository record for the Railway target. Provider mapping
-evidence identifies the service, but the mapped service is **not a verified
-healthy release**. Backend PR #2 must remain draft until the release gates
-below pass at the exact deployed commit.
+This is the single repository record for the Railway target. Runtime code head
+`138608083efe273e7bd20ecd101a0efa5b6700f5` is a verified healthy
+release candidate in the Railway PR environment. Backend PR #2 is open and
+ready for review but remains unmerged. This evidence does not represent a
+Railway Production deployment, production promotion, or frontend release.
 
 ## Authoritative target
 
@@ -15,32 +16,73 @@ below pass at the exact deployed commit.
 | Railway service | `tranquil-tenderness` (`fccb017f-ec3a-472e-ab19-f72011bf84f7`) |
 | Connected repository | `webdev692/THE-EMERSON-EMPIRE_Backend` |
 | Release-candidate branch | `codex/full-stack-release-2026-07-11` |
-| Audited PR/head | PR #2 at `f6f867000a2dafbaadd0cfc35e36ccb3250da94c` |
+| Verified runtime code head | PR #2 at `138608083efe273e7bd20ecd101a0efa5b6700f5` |
+| Verified PR environment | `THE-EMERSON-EMPIRE_Backend-pr-2` (`aa770481-aa3a-483b-8542-0e8913488213`) |
+| Verified PR deployment | `16c0c861-1d01-40fa-bed8-0330c1f88460` |
+| Verified PR API origin | `https://tranquil-tenderness-the-emerson-empirebackend-pr-2.up.railway.app` |
 | Service root | `/epdg-backend-core` |
-| Install | Railway/Nixpacks-managed deterministic install |
+| Builder/install | Nixpacks; Railway-managed deterministic install |
+| Runtime | Node `v22.14.0` |
 | Build | `npm run build` |
 | Start | `npm start` |
 | Readiness | `GET /health` |
-| Mapped production environment | `production_epdg` |
-| Mapped public host | `https://tranquil-tenderness-productionepdg.up.railway.app` |
+| Authoritative Production candidate | `production_epdg` (not changed or deployed by this release-candidate verification) |
+| Mapped Production host | `https://tranquil-tenderness-productionepdg.up.railway.app` (not verified by the PR deployment) |
 | Database connection method | Separate server-only PostgreSQL variables; not `DATABASE_URL` |
 
-The mapped host is the only candidate production API origin. It must not be
-published as a working frontend origin until an exact-head deployment returns
-the expected readiness contract and passes CORS and protected-route probes.
-The root JavaScript foundation is not the mapped Railway entrypoint.
+The mapped Production host is the only candidate production API origin. It
+must not be published as a working frontend origin until a separately
+authorized exact-main deployment passes Production readiness, CORS, database,
+and protected-route probes. The root JavaScript foundation is not the mapped
+Railway entrypoint.
 
-The production branch/promotion policy still requires provider confirmation.
 The branch above identifies the current PR #2 release candidate, not permission
-to change Railway's production source policy.
+to change Railway's Production source policy.
 
-## Current failure
+## Current verified PR release candidate
 
-The exact-head Railway status context `epdg platform - tranquil-tenderness` is
-`failure`. The build succeeds, but startup stops at the database stage before
-binding. Provider evidence reported PostgreSQL code `28P01`, which means the
-server rejected the supplied authentication tuple. No credential value was
-read, recorded, or changed.
+- Railway deployment `16c0c861-1d01-40fa-bed8-0330c1f88460` for runtime code
+  head `138608083efe273e7bd20ecd101a0efa5b6700f5` is successful, active,
+  and online in the PR environment.
+- The active PostgreSQL pool loads the protected CA, validates it as a current
+  CA certificate, and uses `rejectUnauthorized: true`.
+- Strict TLS database authentication and a fresh `SELECT 1` passed before the
+  application listened on the Railway port.
+- `GET /health` returned HTTP `200` with the intended healthy response.
+- The configured approved production frontend and PR #27 preview origins
+  received exact allow-origin headers. An untrusted origin returned `403`
+  without an allow-origin header.
+- Synthetic pending-company sign-in and the self-scoped
+  `GET /api/auth/me` route returned `200`. The same role received `403` from
+  `GET /api/admin/stats` before controller execution. Missing, malformed,
+  expired, and previously valid post-cleanup tokens returned `401`.
+- The temporary non-production QA identity had no profile or related business
+  records, was hard-deleted immediately, and an independent check found zero
+  related synthetic rows.
+- No `SELF_SIGNED_CERT_IN_CHAIN`, PostgreSQL `28P01`, startup migration, or
+  sensitive value appeared in the exact-deployment evidence.
+
+Current local verification at that runtime code head recorded root tests
+`9/9`, EPDG build success, EPDG tests `55/55`, and lint with zero errors and
+161 existing warnings. The artifact audit found no SQL in `dist`, no
+`dist/db/migrations`, no migration executor, and no `postgres-migrations`
+runtime dependency. Credential-pattern and deployment-log scans found no
+secret values.
+
+No backend merge, Railway Production change, frontend change, Netlify
+production promotion, database migration, or production-data action occurred.
+
+## Superseded failure history
+
+On 2026-07-25 and earlier, historical PR deployments failed before binding. The
+recorded sequence included stale database credentials (`28P01`) and later a
+strict-TLS trust failure (`SELF_SIGNED_CERT_IN_CHAIN`). Protected shared
+variable references corrected the credential pairing, and runtime code head
+`138608083efe273e7bd20ecd101a0efa5b6700f5` added supported CA loading
+without weakening certificate verification. Deployment
+`16c0c861-1d01-40fa-bed8-0330c1f88460` supersedes those failed PR-environment
+states. The failed deployments remain part of the release journal and PR
+conversation; they were not erased or reclassified as successful.
 
 The EPDG service reads these database variable names:
 
@@ -78,23 +120,23 @@ values:
 
    POSIX: `EPDG_API_ORIGIN=<origin> npm run smoke:health`
 
-## Historical origin classification
+## Historical origin classification (observed 2026-07-25; superseded)
 
 These classifications are based on repository history, provider evidence, and
 read-only probes on 2026-07-25.
 
 | Origin | Classification | Evidence |
 |---|---|---|
-| `tranquil-tenderness-productionepdg.up.railway.app` | Current provider mapping, unhealthy/unverified | Timed out during current probes; the exact-head deployment status is failed. |
-| `tranquil-tenderness-the-emerson-empirebackend-pr-2.up.railway.app` | Preview-only, currently invalid | Railway edge returned `404 Application not found`. |
-| `tranquil-tenderness-production-6010.up.railway.app` | Historical, currently unavailable | Timed out during current probes and is not the mapped `production_epdg` host. |
-| `the-emerson-empirebackend-production.up.railway.app` | Stale/invalid | Railway edge returned `404 Application not found`. |
-| `backend-production-4b0a9.up.railway.app` | Stale/invalid | Railway edge returned `404 Application not found`. |
-| `backend-productionepdg.up.railway.app` | Stale/invalid | Railway edge returned `404 Application not found`. |
+| `tranquil-tenderness-productionepdg.up.railway.app` | Mapped Production host; unavailable in the historical probe | Timed out during the July 25 probes. This is not evidence about a later Production deployment. |
+| `tranquil-tenderness-the-emerson-empirebackend-pr-2.up.railway.app` | PR preview; invalid in the historical probe | Railway edge returned `404 Application not found` on July 25. Deployment `16c0c861-1d01-40fa-bed8-0330c1f88460` later superseded this result. |
+| `tranquil-tenderness-production-6010.up.railway.app` | Historical; unavailable in the July 25 probe | Timed out during the July 25 probes and was not the mapped `production_epdg` host. |
+| `the-emerson-empirebackend-production.up.railway.app` | Historical invalid host | Railway edge returned `404 Application not found` during the July 25 probe. |
+| `backend-production-4b0a9.up.railway.app` | Historical invalid host | Railway edge returned `404 Application not found` during the July 25 probe. |
+| `backend-productionepdg.up.railway.app` | Historical invalid host | Railway edge returned `404 Application not found` during the July 25 probe. |
 
 Do not restore any historical host as a source-code fallback. Provider
-environment settings must be checked separately and changed only after the
-mapped host is healthy at the reviewed commit.
+environment settings must be checked separately before an authorized
+Production change.
 
 ## Mandatory release gates
 
@@ -120,8 +162,15 @@ mapped host is healthy at the reviewed commit.
 
 ## Rollback
 
-For code-only rollback, select the last verified deployment of this same
-service and commit in Railway, then repeat readiness, CORS, and protected-route
-checks. Database rollback is a separately reviewed forward compensating
-migration. Never reset migration history, run historical table drops, or
-replace production records.
+Before any later Production change, preserve its existing deployment as the
+Production rollback target. For the PR environment, runtime code head
+`138608083efe273e7bd20ecd101a0efa5b6700f5` and deployment
+`16c0c861-1d01-40fa-bed8-0330c1f88460` are the last verified rollback
+anchor. Redeploy that exact application artifact if a later documentation-only
+or application head fails, then repeat readiness, strict TLS, database, CORS,
+authentication, cleanup, and privacy-safe log checks.
+
+A documentation-only reconciliation requires no database compensation.
+Database rollback remains a separately reviewed forward compensating migration.
+Never reset migration history, run historical table drops, or replace
+production records.

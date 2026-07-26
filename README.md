@@ -5,7 +5,14 @@ This repository currently contains two separate Express entrypoints:
 - `server.js`: a small JavaScript API foundation for Agency inquiries, public contributions, and certificate-number verification.
 - `epdg-backend-core`: the TypeScript API that implements the EPDG authentication, intern, mentor, and administrator route surface.
 
-Provider evidence maps Railway to the `epdg-backend-core` entrypoint, but the exact-head deployment is currently failed and its public host is not healthy. [docs/RAILWAY_DEPLOYMENT_MANIFEST.md](docs/RAILWAY_DEPLOYMENT_MANIFEST.md) is the single target, origin-classification, and database-diagnosis record. Do not deploy the root foundation in its place.
+Provider evidence maps Railway to the `epdg-backend-core` entrypoint. Runtime
+code head `138608083efe273e7bd20ecd101a0efa5b6700f5` is verified healthy in the
+Railway PR environment at deployment
+`16c0c861-1d01-40fa-bed8-0330c1f88460`; this is release-candidate evidence,
+not a Production deployment or promotion.
+[docs/RAILWAY_DEPLOYMENT_MANIFEST.md](docs/RAILWAY_DEPLOYMENT_MANIFEST.md) is
+the single target, origin-classification, and database-diagnosis record. Do not
+deploy the root foundation in its place.
 
 ## Toolchain
 
@@ -40,8 +47,8 @@ These are historical local results, not proof for later source changes or a
 Railway deployment. Re-run every command at the exact commit being reviewed and
 record the new results in `docs/OVERNIGHT_FULL_STACK_RELEASE.md`.
 
-Current July 25 working-tree verification, based on `f6f8670` plus the
-uncommitted release-safety changes:
+Superseded July 25 working-tree verification, based on `f6f8670` plus the
+then-uncommitted release-safety changes:
 
 - Root security tests: `9/9` passed.
 - EPDG build: passed.
@@ -50,14 +57,38 @@ uncommitted release-safety changes:
 - Missing-origin readiness-smoke validation: rejected with the expected
   privacy-safe exit.
 
-This working-tree result must be repeated after commit and on the exact Railway
-deployment; it is not platform evidence.
+At that time, the working-tree result still required repetition after commit
+and on the exact Railway deployment; it was not platform evidence.
+
+Current July 26 verified release-candidate evidence for runtime code head
+`138608083efe273e7bd20ecd101a0efa5b6700f5`:
+
+- Railway PR deployment `16c0c861-1d01-40fa-bed8-0330c1f88460`: successful
+  and online under Nixpacks with Node `v22.14.0`.
+- Strict CA-verified PostgreSQL TLS and a fresh `SELECT 1`: passed.
+- `GET /health`: HTTP `200` with the intended healthy response.
+- Configured approved origins: accepted with exact allow-origin headers;
+  an untrusted origin: `403` with no allow-origin header.
+- Synthetic pending-company sign-in and `GET /api/auth/me`: `200`;
+  administrator route with that role: `403`; missing, malformed, expired, and
+  post-cleanup tokens: `401`.
+- The temporary non-production QA identity was hard-deleted; independent
+  cleanup verification found zero related synthetic rows.
+- Root tests: `9/9`; EPDG build: passed; EPDG tests: `55/55`; lint: `0`
+  errors and `161` existing warnings.
+- The built artifact contains no SQL, migration directory, migration executor,
+  or `postgres-migrations` runtime dependency. Credential and deployment-log
+  scans found no secret values.
 
 The EPDG server validates required environment configuration and database connectivity before listening. It does not apply migrations at startup. The root foundation requires an explicit production database connection and CORS allowlist; feature switches are fail-closed.
 
 The current EPDG compatibility boundary is deliberately fail-closed: generic `/api/signup` and `/api/portfolio/*` routes are not mounted, while token refresh, anonymous CV upload, agreement acceptance, legacy onboarding completion, private submission writes, session rating, and certificate issuance remain unavailable until their ownership, revocation, storage, or legal contracts are approved. Company and school dashboard data APIs are not implemented. Backend opportunity routes exist, but the active frontend does not consume them.
 
-No successful current-head Railway deployment, database migration, or external storage change is represented by the local verification above. A names-only `CORS_ORIGINS` update was recorded in Railway on July 12; current target and failure evidence are in the deployment manifest.
+The successful Railway evidence above applies only to the PR environment and
+the identified runtime code head. No backend merge, Railway Production
+deployment or promotion, database migration, production-data change, external
+storage change, frontend change, or Netlify production promotion is represented
+by this record.
 
 Environment variable names and purposes are documented in the two `.env.example` files. Never commit populated environment files.
 
