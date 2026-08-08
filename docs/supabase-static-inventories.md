@@ -19,17 +19,19 @@ Current official guidance was checked on August 8, 2026. The [breaking-change ch
 |---|---|---|
 | `GRANT` statements in tracked schema/migrations | **0** | Actual `anon`, `authenticated`, backend-role, and other role privileges are unknown. |
 | `REVOKE` statements in tracked schema/migrations | **0** | Repository history cannot prove least privilege or provider defaults. |
+| `PUBLIC` grants and role membership/inheritance | Not tracked | Export complete ACLs plus `pg_auth_members`; a direct revoke from an API role does not remove privileges received through either path. |
 | Default privileges | Not tracked | Export `pg_default_acl`; do not infer defaults from project age because Supabase defaults have changed. |
 | Exposed Data API schemas | Not tracked | Record the dashboard setting or authenticated configuration export for `public`, `core`, `epdg`, and `agency`. |
 | Schema `USAGE` grants | Not tracked | Export `information_schema.role_usage_grants`/catalog equivalents. |
 | Table/sequence/function grants | Not tracked | Export object grants separately from RLS. |
-| Direct application data path | Current docs/code use backend Postgres connections | Keep direct browser Data API access closed until identity and policy tests pass. |
+| Effective privilege assertions | Not run | In a disposable trial, require negative `has_schema_privilege`, `has_table_privilege`, `has_sequence_privilege`, and `has_function_privilege` assertions for every unapproved exposed object and API role. |
+| Direct application data path | Current docs/code use backend Postgres connections | Preserve the backend-only design; effective Data API denial remains unverified until catalog, privilege, and request probes pass. |
 | Supabase JS use | Server-side Storage operations only in this repository | This does not prove table Data API exposure. Storage bucket policies are a separate untracked review. |
-| Review-only draft | Revokes all schema/table/sequence/function privileges from `anon` and `authenticated` in known app schemas | Deliberately broader than table grants. Capture compensating grants and review Edge Function/RPC compatibility before any non-production trial. |
+| Review-only draft | Removes schema/table/sequence/function ACL entries granted directly to `anon` and `authenticated` in known app schemas | Direct ACL change only. It does not revoke from `PUBLIC`, alter inherited memberships/default privileges, or neutralize callable routines. Capture compensation and review Edge/RPC compatibility before any trial. |
 
 Provable grant conflicts from versioned SQL: **zero**, because no current grant state is versioned. Unverified grant-to-intent comparisons: **all 43 tracked tables**. Any live `anon`/`authenticated` object grant on a row marked backend-only in `docs/rls-policy-map.md` is a candidate conflict, but it must be established by authenticated catalog evidence before reporting it as fact.
 
-Supabase's current [Data API security guide](https://supabase.com/docs/guides/api/securing-your-api) treats grants as object reachability and RLS as row filtering. Neither layer substitutes for the other. The draft does not mention or grant a privileged server key/role and does not change the backend connection role.
+Supabase's current [Data API security guide](https://supabase.com/docs/guides/api/securing-your-api) treats grants as object reachability and RLS as row filtering. Neither layer substitutes for the other. PostgreSQL effective privileges can arise from a role's direct ACL, `PUBLIC`, or inherited memberships. Default ACLs govern future objects, and functions may retain PostgreSQL's default `EXECUTE` privilege for `PUBLIC`; a callable `SECURITY DEFINER` function can perform work with its owner's privileges. The draft does not mention or grant a privileged server key/role, does not change the backend connection role, and makes no complete lockout claim.
 
 ## RLS and policy inventory
 
@@ -41,7 +43,7 @@ Supabase's current [Data API security guide](https://supabase.com/docs/guides/ap
 | Explicitly reported RLS-disabled tables | `core.branches`, `core.users`, `core.user_branch_roles`, `epdg.career_files`, `epdg.career_experiences`, `epdg.career_projects`, `epdg.career_skills` |
 | Other `core`/`epdg` table RLS state | Unknown table by table; prior audit only says “many” are enabled without policies |
 | Agency review SQL | Proposes RLS enabled on all three Agency tables with no policies; application unknown |
-| Proposed policies in this package | **0** — fail-closed by design until a trusted database request identity exists |
+| Proposed policies in this package | **0** — no allow policy is drafted until a trusted database request identity exists; effective access remains unknown |
 
 The application verifies custom HS256 JWTs in Express and reads a top-level integer `id`. The schema stores serial/integer user IDs. No tracked contract links those IDs to `auth.users.id` or proves that PostgREST accepts the application token. Consequently, an `auth.uid()` ownership policy would be type- and identity-incompatible, while trusting an invented JWT claim would be unsafe.
 
@@ -52,7 +54,7 @@ Any later update policy must have a select policy and must use both `USING` (exi
 | Object type | Tracked custom objects | Notes |
 |---|---:|---|
 | SQL functions | **0** | Migrations call built-ins such as `now`, `gen_random_uuid`, `setval`, `pg_get_serial_sequence`, `format`, and `to_regclass`; none is an application authorization function. |
-| `SECURITY DEFINER` functions | **0** | Actual provider/database functions still require authenticated catalog export. |
+| `SECURITY DEFINER` functions | **0** | Actual provider/database functions, `prosecdef`, EXECUTE ACLs (including `PUBLIC`), and effective `has_function_privilege` results still require authenticated catalog export. |
 | Triggers | **0** | No automatic ownership, timestamp, audit, or synchronization trigger is tracked. |
 | Views/materialized views | **0** | Public projections are implemented in backend queries, not security-invoker views. |
 | RPC grants | None tracked | Function exposure and Edge/RPC consumers are a dashboard/catalog decision. |
@@ -140,7 +142,7 @@ The review-only file `supabase/review-only/2026-08-08/draft_foreign_key_indexes.
 
 This set is a static “unindexed FK” finding, not a performance claim. Validate table sizes, write rates, existing invalid/duplicate indexes, query plans, and Supabase Performance Advisor output in a safe environment before approval.
 
-This follows Supabase's [Performance and Security Advisors guidance for unindexed foreign keys](https://supabase.com/docs/guides/database/database-advisors?lint=0017_foreign_table_in_api), while keeping advisor output and workload validation explicitly open.
+This follows Supabase's [Performance and Security Advisors guidance](https://supabase.com/docs/guides/database/database-advisors), while keeping the specific unindexed-foreign-key Advisor result and workload validation explicitly open.
 
 ## Material schema-drift findings
 

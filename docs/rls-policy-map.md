@@ -18,7 +18,7 @@ Access notation describes backend behavior proven in tracked routes/services, no
 - **Decision** — repository evidence is insufficient; no permission may be inferred.
 - **—** — no access rule was found.
 
-At the database boundary the proposed posture for every row is backend-mediated/fail-closed: no `anon` or `authenticated` table grant and no direct Data API policy until the identity and role decisions are approved. This preserves the documented `frontend → backend API → Postgres` architecture. Supabase documents [grants and RLS as separate Data API layers](https://supabase.com/docs/guides/api/securing-your-api) and requires RLS on exposed tables while still granting only necessary object privileges in its [RLS guide](https://supabase.com/docs/guides/database/postgres/row-level-security).
+At the database boundary the design intent is backend-mediated: no direct Data API access is approved until the identity and role decisions are resolved. The review draft removes only ACL entries granted directly to `anon` and `authenticated`; it does not establish effective denial because `PUBLIC` grants, inherited role membership, default privileges, and callable routines are unverified. This preserves the documented `frontend → backend API → Postgres` architecture as a design boundary, not a claim about live ACL state. Supabase documents [grants and RLS as separate Data API layers](https://supabase.com/docs/guides/api/securing-your-api) and requires RLS on exposed tables while still granting only necessary object privileges in its [RLS guide](https://supabase.com/docs/guides/database/postgres/row-level-security).
 
 <!-- TABLE_MAP_START -->
 | Table | Source / RLS evidence | Anonymous / public | Authenticated participant | Intern own record | Assigned mentor or team lead | Administrator | Founder / super-admin | Backend service only | Ownership or unresolved rule |
@@ -70,7 +70,7 @@ At the database boundary the proposed posture for every row is backend-mediated/
 
 ## Uniform direct Data API disposition
 
-No tracked SQL grants access to `anon` or `authenticated`, no tracked SQL creates a policy, and the project dashboard's exposed-schema list is not versioned. Therefore no row above is approved for direct Data API access. The review-only lockdown draft enables RLS where the known table exists and revokes Data API object access from those two roles; it creates no permissive fallback.
+No tracked SQL grants access to `anon` or `authenticated`, no tracked SQL creates a policy, and the project dashboard's exposed-schema list is not versioned. Therefore no row above is approved for direct Data API access. The review-only draft enables RLS where the known table exists and removes only direct ACL entries from those two roles; it creates no allow policy. That operation does not remove privileges granted to `PUBLIC` or inherited roles, change default privileges, or make callable routines safe. Effective denial remains unproven until full catalog review, `has_*_privilege` assertions, and Data API/RPC probes pass in a disposable environment.
 
 An eventual `UPDATE` policy must have a matching `SELECT` policy and both `USING` and `WITH CHECK` predicates. A role target such as `TO authenticated` is only authentication, not row authorization. No future policy may use `auth.role()`, user-editable metadata, an unreviewed top-level JWT claim, or a `SECURITY DEFINER` shortcut.
 

@@ -1,6 +1,6 @@
 # Supabase ownership gaps and decision register
 
-> All decisions are open for founder/technical review. “Fail closed” is a temporary safety posture, not a claim that business behavior has been approved.
+> All decisions are open for founder/technical review. Interim entries express design intent; they are not proof of effective database denial.
 
 ## Ownership-column gaps
 
@@ -33,10 +33,10 @@ A missing owner is not automatically a schema defect: system catalogs, audit rec
 
 | ID | Decision required | Evidence and risk | Options that require approval | Default until decided | Owner / status |
 |---|---|---|---|---|---|
-| DR-01 | Will browser clients use the Data API for application tables? | Current architecture and docs use backend Postgres; direct access changes the trust boundary. | Backend-only; selected security-invoker projections; full client access with reviewed policies. | Data API denied for app tables. | Founder + technical lead / **Open** |
+| DR-01 | Will browser clients use the Data API for application tables? | Current architecture and docs use backend Postgres; direct access changes the trust boundary. | Backend-only; selected security-invoker projections; full client access with reviewed policies. | Backend-only design; effective Data API denial is unverified. | Founder + technical lead / **Open** |
 | DR-02 | What immutable database identity represents the current application user? | Express verifies a custom HS256 token with integer `id`; schema has no `auth.users` UUID link. | Migrate to Supabase Auth UUID; add reviewed immutable mapping; keep DB behind backend. | No participant RLS policy. | Security/identity owner / **Open, blocking** |
 | DR-03 | Which schemas are exposed through the Data API? | Dashboard setting is not versioned; `public` defaults cannot establish `core`, `epdg`, or `agency`. | Disable Data API; expose a dedicated API schema; expose selected existing schemas. | Assume none are approved. | Supabase project owner / **Open, dashboard-only** |
-| DR-04 | What are the actual object and default grants? | Zero tracked `GRANT`/`REVOKE`; Supabase defaults have changed over time. | Adopt explicit opt-in grants after catalog export. | No grant inferred. | DBA / **Open, catalog export required** |
+| DR-04 | What are the actual effective privileges? | Zero tracked `GRANT`/`REVOKE`; direct ACLs, `PUBLIC` grants, role membership/inheritance, `pg_default_acl`, routine EXECUTE ACLs, and `SECURITY DEFINER` state are untracked. | Export full ACL/membership/default/routine catalogs, run per-role `has_*_privilege` assertions, then design separately reviewed opt-in ACL changes. | No privilege or effective denial inferred. | DBA / **Open, catalog export required** |
 | DR-05 | What role does the Railway backend connect as, and does it own tables or bypass RLS? | Enabling RLS may block a non-owner; owners normally bypass unless forced; runtime role is untracked. | Dedicated least-privilege runtime role; owner role; forced RLS with compatible policies. | Draft is not runtime-compatible evidence. | Railway/Supabase owners / **Open, blocking** |
 | DR-06 | Is `super_admin` the approved founder-equivalent? | Code guards `admin_role === 'super_admin'`; no `founder` value exists. | Treat super-admin as founder gate; add a distinct immutable role; retain founder approval outside DB. | Document as “founder/super-admin” but do not invent mapping. | Founder / **Open** |
 | DR-07 | How is a team lead represented and assigned? | No team-lead role/table exists. `admin_type` and mentor flags are insufficient proof. | Add reviewed role/assignment relation; define team lead as a constrained admin type. | No team-lead access. | Founder + program owner / **Open** |

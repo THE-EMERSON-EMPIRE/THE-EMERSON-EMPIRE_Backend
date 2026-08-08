@@ -5,18 +5,30 @@
 -- It has not been executed against any database.
 -- ============================================================================
 --
--- Proposed posture: preserve the current backend-mediated architecture while
+-- Proposed operation: preserve the current backend-mediated architecture while
 -- direct Data API identity, schema exposure, grants, and runtime-role behavior
--- remain unverified. Grants and RLS are separate controls; this draft addresses
--- both without creating an allow policy.
+-- remain unverified. Grants and RLS are separate controls. This draft enables
+-- RLS and removes only ACL entries granted directly to `anon` and
+-- `authenticated`; it creates no allow policy.
+--
+-- IMPORTANT: direct REVOKE does not prove effective denial. Privileges may still
+-- arrive through PUBLIC or inherited role membership. Functions may retain
+-- PostgreSQL's default EXECUTE privilege for PUBLIC; default privileges may
+-- grant access to future objects, and an executable SECURITY DEFINER routine may
+-- expose privileged operations. This draft deliberately does not revoke from
+-- PUBLIC, alter role membership/default privileges, or rewrite/drop routines.
 --
 -- Preconditions before an approved non-production trial:
---   1. export pg_class.relrowsecurity, pg_policies, object grants, schema grants,
---      default privileges, table owners, and roles with BYPASSRLS;
+--   1. export pg_class.relrowsecurity, pg_policies, complete object/schema ACLs
+--      including PUBLIC, pg_auth_members, pg_default_acl, table owners, roles
+--      with BYPASSRLS, and pg_proc ACL/prosecdef state;
 --   2. reconcile SCHEMA_REFERENCE.sql with the migration history and live DDL;
 --   3. prove the backend connection role will remain compatible;
 --   4. approve the identity/authorization decisions in the decision register;
---   5. capture compensating GRANT statements from the target before revocation.
+--   5. capture compensating GRANT statements from the target before revocation;
+--   6. prepare effective has_schema_privilege, has_table_privilege,
+--      has_sequence_privilege, and has_function_privilege assertions for every
+--      exposed application object and both API roles.
 --
 -- There are deliberately no CREATE POLICY statements in this draft. The app's
 -- custom HS256 access token carries an integer `id`, while the repository has no
@@ -95,6 +107,9 @@ declare
   target_schema text;
   api_role text;
 begin
+  -- These statements remove only privileges granted directly to the named API
+  -- roles. They do not remove grants to PUBLIC or inherited roles, and they do
+  -- not change default privileges for objects created later.
   foreach target_schema in array array['core', 'epdg', 'agency']
   loop
     if exists (select 1 from pg_namespace where nspname = target_schema) then
@@ -125,5 +140,12 @@ $draft$;
 
 commit;
 
--- Expected Data API result after an approved trial: fail closed. No direct
--- anonymous or authenticated table access is granted by this package.
+-- No complete Data API lockout is claimed by this draft. After an approved
+-- disposable-environment trial, verify effective privileges for both roles on
+-- every exposed object with has_schema_privilege (USAGE/CREATE),
+-- has_table_privilege (all relevant table privileges), has_sequence_privilege
+-- (USAGE/SELECT/UPDATE), and has_function_privilege (EXECUTE). Also inspect
+-- PUBLIC ACLs, inherited role membership, pg_default_acl, routine EXECUTE ACLs,
+-- and SECURITY DEFINER routines, then exercise actual Data API and RPC requests.
+-- Treat any positive unapproved privilege or successful request as a failed
+-- security assertion requiring separate review; do not broaden this draft.

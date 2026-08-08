@@ -22,7 +22,7 @@ This PR:
 - records exact evidence limits: seven tables are reported RLS-disabled, three Agency tables have unapplied RLS-enable review SQL, and all other table-level runtime states remain unknown;
 - records 24 FK columns without leading-column index coverage in the July 2 schema snapshot;
 - adds forward-only, idempotent SQL drafts outside automatic migration paths;
-- proposes a fail-closed Data API posture with zero allow policies because the repository has no reviewed mapping between its custom integer-ID JWT identity and Supabase Auth/PostgREST identity;
+- proposes a backend-only design with zero allow policies because the repository has no reviewed mapping between its custom integer-ID JWT identity and Supabase Auth/PostgREST identity;
 - adds static regression tests for table-map completeness, unsafe policy patterns, the 24-index set, and proven ownership FKs;
 - adds a decision register, synthetic role-test plan, and compensating plan;
 - prepares evidence comments for frontend Issues #18, #19, and #24 without closing them.
@@ -37,24 +37,24 @@ The backend verifies a custom HS256 token containing an integer `id`. The tracke
 
 - `supabase/review-only/2026-08-08/draft_data_api_lockdown.sql`
   - enables RLS only when a known table exists;
-  - revokes schema/table/sequence/function access from `anon` and `authenticated`;
-  - creates no policies and grants no access;
+  - removes only schema/table/sequence/function ACL entries granted directly to `anon` and `authenticated`;
+  - creates no policies and contains no `GRANT` statement;
   - is not in either automatic migration path.
 - `supabase/review-only/2026-08-08/draft_foreign_key_indexes.sql`
   - contains 24 `CREATE INDEX CONCURRENTLY IF NOT EXISTS` candidates;
   - must be advisor/plan-validated one at a time in an approved disposable environment;
   - is not executable inside a transaction.
 
-The function revocation is deliberately broader than table grants and must not be trialed until existing RPC/Edge consumers and exact compensating grants are captured.
+The direct function-ACL revocation is deliberately broader in object type than the table revocations and must not be trialed until existing RPC/Edge consumers and exact compensating grants are captured. Direct revocation does not establish effective denial: privileges can remain through `PUBLIC` (including default function `EXECUTE`), inherited role membership, ownership/`BYPASSRLS`, or callable routines, while default privileges can affect future objects. A disposable trial must export those catalogs and require negative `has_schema_privilege`, `has_table_privilege`, `has_sequence_privilege`, and `has_function_privilege` assertions plus actual Data API/RPC denial probes. No complete lockout is claimed before those pass.
 
 ## Verification
 
 - PASS — root `npm ci --ignore-scripts --no-audit --no-fund`
-- PASS — root `npm test`: 15/15, including all six Supabase design regressions
+- PASS — root `npm test`: 16/16, including all seven Supabase design regressions
 - PASS — core `npm ci --ignore-scripts --no-audit --no-fund`
 - PASS — core `npm test`: build succeeded and 57/57 route/security tests passed
 - PASS with existing warnings — core `npm run lint`: 0 errors, 161 warnings in pre-existing source files
-- PASS — exact 43-row map, seven reported-disabled labels, three Agency proposal labels, and separate 44-object lockdown coverage
+- PASS — exact 43-row map, seven reported-disabled labels, three Agency proposal labels, and separate 44-object direct-ACL/RLS draft coverage
 - PASS — 24-index snapshot reconciliation and 29 proven ownership-FK checks
 - PASS — credential-pattern and forbidden executable-SQL scans
 
@@ -89,14 +89,14 @@ I prepared a review package that maps all 43 tracked table contracts and separat
 
 Current checked policy groups recorded here remain historical issue state: public-read; intern self-access for profile/progress/submissions/certificates/notifications/saved resources; admin/founder access; backend/service-only audit/role/sensitive actions; and deny-by-default private intern records. Likewise, the checked priority tables (`epdg.users`, `epdg.intern_profiles`, `epdg.admins`, `epdg.intern_roadmap_progress`, `epdg.module_completions`) are not proven to have live policies by the tracked SQL.
 
-The static repository does prove a blocking identity gap: Express validates a custom HS256 token with an integer `id`, while there is no reviewed mapping to `auth.users.id` or trusted PostgREST claim contract. I therefore did not invent `auth.uid()` or custom-claim policies. The draft is fail-closed: enable RLS on known existing tables, revoke direct `anon`/`authenticated` access, and create zero allow policies until identity, schema exposure, actual grants, and backend runtime-role behavior are verified.
+The static repository does prove a blocking identity gap: Express validates a custom HS256 token with an integer `id`, while there is no reviewed mapping to `auth.users.id` or trusted PostgREST claim contract. I therefore did not invent `auth.uid()` or custom-claim policies. The draft enables RLS on known existing tables, removes only ACL entries granted directly to `anon`/`authenticated`, and creates zero allow policies until identity, schema exposure, actual grants, and backend runtime-role behavior are verified. It does not claim effective denial: `PUBLIC`, inherited role membership, default privileges, ownership/`BYPASSRLS`, and callable routines still require catalog review, `has_*_privilege` assertions, and negative Data API/RPC probes in a disposable environment.
 
 Artifacts prepared:
 
 - exhaustive table/access map and exact evidence labels;
 - grants, Data API, policy, function, trigger, and index inventories;
 - ownership/role decision register;
-- review-only lockdown SQL outside automatic migration paths;
+- review-only direct-ACL/RLS SQL outside automatic migration paths;
 - static tests for unsafe patterns and proven ownership FKs;
 - synthetic non-production role-test and compensating plan.
 

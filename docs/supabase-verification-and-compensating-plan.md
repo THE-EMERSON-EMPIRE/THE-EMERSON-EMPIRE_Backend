@@ -8,7 +8,7 @@ Allowed local checks:
 
 1. Parse the tracked schema snapshot and prove the 40-table count.
 2. Prove the policy map has exactly the 43 tracked table contracts (40 snapshot + three Agency proposal tables).
-3. Prove the lockdown SQL covers those 43 plus the separately labeled runtime-only `public.migrations` object.
+3. Prove the direct-ACL/RLS draft covers those 43 plus the separately labeled runtime-only `public.migrations` object.
 4. Recalculate leading-column FK index coverage from the snapshot and compare it exactly with the 24 candidate indexes.
 5. Assert that review SQL contains no `CREATE POLICY`, permissive `true` predicate, deprecated role helper, user-editable metadata authorization, `SECURITY DEFINER`, privileged server role grant, destructive table/data DDL, or automatic migration-path file.
 6. Validate the machine-readable ownership relationships against actual foreign keys in the snapshot.
@@ -22,13 +22,13 @@ The static tests deliberately do not pretend to validate Postgres execution, run
 | Command/check | Result |
 |---|---|
 | Root locked install | Pass; 87 packages installed from the committed lockfile with scripts/audit/funding disabled |
-| Root `npm test` | Pass, 15/15; includes six Supabase design regressions |
+| Root `npm test` | Pass, 16/16; includes seven Supabase design regressions |
 | Core locked install | Pass; 443 packages installed from the committed lockfile with scripts/audit/funding disabled |
 | Core `npm test` | Pass; TypeScript build succeeded and 57/57 route/security tests passed |
 | Core `npm run lint` | Pass with 0 errors and 161 existing warnings in untouched source files |
 | Credential-shaped value scan | Pass; no matching value found in changed files |
 | Forbidden executable draft SQL scan | Pass; no executable allow policy, grant, destructive table/data statement, deprecated role helper, user-editable metadata authorization, or security-definer function found |
-| Staged diff and unexpected-file check | Pass; `git diff --cached --check` was clean and the staged set contains exactly the ten expected additions |
+| Diff and unexpected-file check | Pass; package and focused follow-up diff checks were clean and only expected package files changed |
 
 These commands had no database/provider credentials and did not make a network request to Supabase.
 
@@ -41,8 +41,10 @@ Use a disposable Supabase branch or separate development project containing synt
 - Export schema-only definitions and these catalogs without row data:
   - tables, columns, constraints, owners, `relrowsecurity`, and `relforcerowsecurity`;
   - `pg_policies`;
-  - schema/table/sequence/function grants and `pg_default_acl`;
-  - role attributes including ownership and `BYPASSRLS`;
+  - complete schema/table/sequence/function ACLs, including grants to `PUBLIC`;
+  - `pg_auth_members`, inheritance/set-role capabilities, role ownership, and `BYPASSRLS`;
+  - `pg_default_acl` for every object-creating owner/migration role;
+  - routine identities, ACLs (including default `PUBLIC EXECUTE`), owners, `pg_proc.prosecdef`, and approved RPC/pre-request use;
   - indexes including validity/readiness flags;
   - exposed Data API schemas and registered pre-request/RPC functions.
 - Run Supabase Security Advisor and Performance Advisor; preserve findings as evidence without private rows.
@@ -53,17 +55,22 @@ Use a disposable Supabase branch or separate development project containing synt
 
 ## Staged non-production trial
 
-### Stage 1 — fail-closed access baseline
+### Stage 1 — direct-ACL/RLS trial and effective-access proof
 
 1. Clone schema into the disposable environment.
 2. Create only synthetic fixtures with randomized, non-real names and addresses.
 3. Confirm all app schemas are absent from the Data API exposed-schema list unless the test explicitly requires them.
-4. If testing the lockdown draft, review the broad function revocation separately; exclude it until every RPC/Edge consumer is accounted for.
+4. If testing the draft, review its direct function-ACL revocations separately; exclude them until every RPC/Edge consumer is accounted for.
 5. Run the transactional RLS/grant portion and inspect every notice/error before commit.
 6. Test the backend with its actual non-production database role. Do not treat table-owner success as proof that RLS protects a client role.
-7. Verify `anon` and `authenticated` cannot select, insert, update, or delete any raw application table.
+7. For both `anon` and `authenticated`, assert every unapproved effective privilege is false for every exposed application object:
+   - `has_schema_privilege` for schema `USAGE` and `CREATE`;
+   - `has_table_privilege` for `SELECT`, `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE`, `REFERENCES`, and `TRIGGER`;
+   - `has_sequence_privilege` for `USAGE`, `SELECT`, and `UPDATE`;
+   - `has_function_privilege` for `EXECUTE`, using each routine's exact identity/OID.
+8. Reconcile any positive result against direct ACLs, `PUBLIC`, `pg_auth_members`, `pg_default_acl`, owners/`BYPASSRLS`, and callable `SECURITY DEFINER` routines. Then issue negative Data API table and RPC request probes for both roles.
 
-Expected result for the current draft: direct Data API access fails closed. No user-facing role success is expected or claimed.
+The current draft is expected only to remove ACL entries granted directly to the two API roles and to enable RLS on known existing tables. It does not establish effective denial. No complete Data API lockout is claimed unless every catalog review, effective `has_*_privilege` assertion, and table/RPC request probe passes; any unapproved positive privilege or successful request is a failed security assertion requiring separate review.
 
 ### Stage 2 — indexes, one at a time
 
@@ -104,14 +111,14 @@ Refresh/revoke synthetic sessions where relevant, delete all synthetic fixtures,
 
 No compensating action is required because no SQL, migration, provider change, or deployment occurred. Reverting the local commit removes only documentation, static tests, and review-only drafts.
 
-### If a future lockdown trial is approved
+### If a future direct-ACL/RLS trial is approved
 
 - Before execution, generate exact `GRANT` statements for every privilege that the target currently has. Store the evidence securely outside public logs.
 - If the RLS/grant transaction fails before commit, issue `ROLLBACK` and stop.
 - After commit, restore only the captured grants needed by verified consumers.
 - Disable RLS only on tables proven by the pre-change export to have had RLS disabled. Do not blanket-disable RLS.
 - Because this draft creates no policies, there is no policy object to drop.
-- Re-test backend, Data API denial, RPC/Edge consumers, and health after compensation.
+- Re-test the backend, all effective `has_*_privilege` assertions, negative Data API table/RPC probes, RPC/Edge consumers, and health after compensation.
 
 ### If a future concurrent index build fails or regresses workload
 
@@ -127,6 +134,8 @@ Stop immediately and request review if any of these occurs:
 - target identity or non-production status is ambiguous;
 - a command would touch production or reveal private rows/secrets;
 - backend role ownership/bypass behavior is unknown;
+- an unapproved effective privilege survives through `PUBLIC`, role membership, ownership/bypass, or a callable routine;
+- a Data API or RPC denial probe unexpectedly succeeds;
 - catalog state differs from the documented table/column set;
 - a checked Issue #18 box has no catalog evidence;
 - a test requires a real person or real business record;

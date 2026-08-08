@@ -9,6 +9,10 @@ const repoRoot = join(__dirname, '..');
 const schemaPath = join(repoRoot, 'epdg-backend-core', 'SCHEMA_REFERENCE.sql');
 const agencyPath = join(repoRoot, 'supabase', 'migrations', '20260708_api_foundation_review.sql');
 const mapPath = join(repoRoot, 'docs', 'rls-policy-map.md');
+const decisionPath = join(repoRoot, 'docs', 'supabase-access-decision-register.md');
+const commentsPath = join(repoRoot, 'docs', 'supabase-review-comment-drafts.md');
+const inventoryPath = join(repoRoot, 'docs', 'supabase-static-inventories.md');
+const verificationPath = join(repoRoot, 'docs', 'supabase-verification-and-compensating-plan.md');
 const rlsDraftPath = join(
   repoRoot,
   'supabase',
@@ -29,6 +33,13 @@ const ownershipPath = join(
   'review-only',
   '2026-08-08',
   'proven-ownership-relationships.json',
+);
+const reviewReadmePath = join(
+  repoRoot,
+  'supabase',
+  'review-only',
+  '2026-08-08',
+  'README.md',
 );
 
 function read(path) {
@@ -173,7 +184,7 @@ test('reported-disabled and Agency-proposal RLS labels are exact', () => {
   ]);
 });
 
-test('review-only lockdown covers tracked tables plus the separate runtime ledger', () => {
+test('review-only direct-ACL/RLS draft covers tracked tables plus the runtime ledger', () => {
   const draft = read(rlsDraftPath);
   const listed = [...draft.matchAll(/\('([a-z_]+)', '([a-z_]+)'\)/g)]
     .map((match) => `${match[1]}.${match[2]}`);
@@ -189,7 +200,50 @@ test('review-only lockdown covers tracked tables plus the separate runtime ledge
   assert.match(draft, /array\['anon', 'authenticated'\]/i);
 });
 
-test('review SQL is fail-closed and excludes unsafe policy shortcuts', () => {
+test('direct ACL draft disclaims effective denial and requires effective checks', () => {
+  const draft = read(rlsDraftPath);
+  const verification = read(verificationPath);
+  const packageText = [
+    mapPath,
+    decisionPath,
+    commentsPath,
+    inventoryPath,
+    verificationPath,
+    reviewReadmePath,
+    rlsDraftPath,
+  ].map(read).join('\n');
+
+  assert.match(draft, /removes only ACL entries granted directly to `anon`/i);
+  assert.match(draft, /direct REVOKE does not prove effective denial/i);
+  assert.match(draft, /PUBLIC or inherited role membership/i);
+  assert.match(draft, /default EXECUTE privilege for PUBLIC/i);
+  assert.match(draft, /pg_auth_members/i);
+  assert.match(draft, /pg_default_acl/i);
+  assert.match(draft, /SECURITY DEFINER/i);
+  assert.match(draft, /No complete Data API lockout is claimed/i);
+
+  for (const helper of [
+    'has_schema_privilege',
+    'has_table_privilege',
+    'has_sequence_privilege',
+    'has_function_privilege',
+  ]) {
+    assert.match(verification, new RegExp(helper));
+  }
+  assert.match(verification, /negative Data API table and RPC request probes/i);
+
+  for (const overclaim of [
+    /fail[- ]closed/i,
+    /removes Data API access from/i,
+    /revokes Data API object access from/i,
+    /direct Data API access fails/i,
+    /Data API denied for app tables/i,
+  ]) {
+    assert.doesNotMatch(packageText, overclaim);
+  }
+});
+
+test('review SQL creates no allow policy and excludes unsafe shortcuts', () => {
   const sql = stripSqlLineComments(`${read(rlsDraftPath)}\n${read(indexDraftPath)}`);
 
   for (const forbidden of [
@@ -204,6 +258,10 @@ test('review SQL is fail-closed and excludes unsafe policy shortcuts', () => {
     /\btruncate\b/i,
     /\bdelete\s+from\b/i,
     /\bdisable\s+row\s+level\s+security\b/i,
+    /\bgrant\b/i,
+    /\balter\s+role\b/i,
+    /\balter\s+default\s+privileges\b/i,
+    /\brevoke\b[\s\S]{0,200}\bfrom\s+public\b/i,
   ]) {
     assert.doesNotMatch(sql, forbidden);
   }
