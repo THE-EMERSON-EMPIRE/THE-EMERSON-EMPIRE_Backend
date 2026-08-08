@@ -82,6 +82,7 @@ test('reviewed forward migrations reject destructive SQL', () => {
 test('EPDG health smoke accepts only credential-free origins', () => {
   assert.equal(validateApiOrigin('https://api.example.invalid'), 'https://api.example.invalid');
   assert.equal(validateApiOrigin('http://127.0.0.1:8000'), 'http://127.0.0.1:8000');
+  assert.throws(() => validateApiOrigin(undefined), /EPDG_API_ORIGIN is required/);
 
   for (const origin of [
     'http://api.example.invalid',
