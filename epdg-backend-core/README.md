@@ -13,15 +13,12 @@ npm run lint
 npm test
 ```
 
-The July 11-12 recorded release-worktree results were: build passed,
-route/security tests passed `38/38`, and lint exited `0` with `0` errors and
-`161` unsuppressed warnings. Treat these as historical evidence and re-run the
-current source before release.
-
-Current July 25 working-tree verification, based on `f6f8670` plus the
-uncommitted release-safety changes: build passed, tests passed `47/47`, and lint
-exited `0` with `0` errors and the same `161` existing warnings. Repeat these
-checks after commit and against the exact deployment.
+The July 26 exact-head release record reports: build passed, route/security
+tests passed `55/55`, and lint exited `0` with zero errors and `161`
+unsuppressed warnings. The later merged release record identifies backend
+`main` commit `7bfdb114363147ec2998d151dff22a786b2122ba` and Railway Production
+deployment `cbb535d2-bff0-43af-839b-26e53e5a97dc`. Treat these as historical
+evidence and re-run the current source before release.
 
 Populate a local `.env` from the variable names in `.env.example`. Never commit the populated file.
 
@@ -44,8 +41,10 @@ npm run smoke:health
 EPDG_API_ORIGIN=https://reviewed-api-origin.example npm run smoke:health
 ```
 
-The current Railway mapping and database-authentication blocker are documented
-in `../docs/RAILWAY_DEPLOYMENT_MANIFEST.md`.
+The Railway mapping, July 26 release evidence, August 8 `503` readiness
+observation, and unresolved dashboard checks are documented in
+`../docs/RAILWAY_DEPLOYMENT_MANIFEST.md`. The `503` observation does not
+establish a root cause.
 
 Production browser origins come only from `CORS_ORIGINS`; hardcoded production domains are intentionally absent. Development mode permits the documented local Vite origins.
 

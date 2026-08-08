@@ -294,3 +294,91 @@ For PR-environment application rollback, redeploy exact runtime code head
 strict TLS, `SELECT 1`, readiness, CORS, authentication, cleanup, and
 privacy-safe log checks. No database rollback or migration compensation is
 required for the documentation reconciliation.
+
+## 2026-07-26 - Merged backend and Railway Production release record
+
+This section was reconciled on August 8 from the final release record in
+[merged frontend PR #27](https://github.com/webdev692/Empire-emerson_frontend/pull/27).
+It preserves dated July 26 evidence and is not a fresh provider inspection.
+
+### Merge and deployment coordinates
+
+- Backend PR #2 merged into `main` at
+  `7bfdb114363147ec2998d151dff22a786b2122ba`.
+- Railway Production deployment
+  `cbb535d2-bff0-43af-839b-26e53e5a97dc` was recorded as successful and active
+  in Europe West (Amsterdam).
+- The recorded Production API origin was
+  `https://tranquil-tenderness-productionepdg.up.railway.app`.
+- The verified Railway entrypoint was `epdg-backend-core`, not the root
+  JavaScript foundation.
+
+### Recorded Production gates
+
+- Strict CA-verified PostgreSQL TLS and a fresh `SELECT 1` passed before the
+  server listened.
+- `GET /health` returned HTTP `200`.
+- Approved-origin and rejected-origin CORS behavior passed.
+- Authentication and authorization boundaries passed.
+- Least-privileged synthetic QA data was removed and cleanup was verified.
+- Startup migration-execution and built-artifact safety audits passed.
+- Build, deployment, runtime, and credential-pattern scans recorded no secret
+  values.
+
+This reconciliation does not reproduce environment values, credentials,
+private rows, or logs. It does not claim that the same deployment or health
+state remained current after July 26.
+
+## 2026-08-08 - CI and operational-state reconciliation
+
+### Read-only operational observation
+
+At approximately 12:07 EDT (response `Date` header
+`2026-08-08 16:07:49 UTC`), three read-only checks of the canonical Production
+`/health` endpoint returned HTTP `503` and the privacy-safe response contract
+for `epdg-backend-core` with status `unavailable`. The response establishes that
+the endpoint answered; it does not diagnose the cause or prove the active
+source commit.
+
+Authenticated Railway review remains required for the active deployment and
+source SHA, service root, current runtime, restart/crash history, recent build
+and application logs, database/TLS startup stage, health history, deploy source,
+branch, and configuration-presence drift. Values must not be copied into the
+record.
+
+### Repository governance changes prepared
+
+- Added pull-request and `main`-push CI for locked root and EPDG installs, root
+  tests, EPDG build, lint, and route/security tests.
+- Added private vulnerability-reporting guidance.
+- Exposed the existing privacy-safe EPDG readiness smoke at repository root;
+  it still requires an explicit credential-free target and has no Production
+  default.
+- Reconciled the repository entrypoint and July 26 release history.
+- Inventoried Node/npm, provider runtime, Node type-definition, and lint drift
+  without changing dependencies or lockfiles.
+- Captured the Railway runtime-pinning question as a dashboard decision rather
+  than changing provider settings.
+
+### Exact-worktree local verification
+
+Using Node `22.23.1` and npm `11.17.0`:
+
+- Root `npm ci --ignore-scripts --no-audit --no-fund`: passed; 87 packages.
+- EPDG `npm ci --ignore-scripts --no-audit --no-fund`: passed; 443 packages.
+- Root security tests: `9/9` passed.
+- EPDG production build: passed.
+- EPDG lint: exit `0`; zero errors and `161` warnings (142 explicit `any`, 17
+  console, and 2 non-null-assertion diagnostics).
+- EPDG route/release-safety tests: `57/57` passed.
+- Missing explicit `EPDG_API_ORIGIN`: rejected with the expected privacy-safe
+  error-type-only output.
+- GitHub Actions YAML: parsed with pull-request and `main`-push triggers, both
+  required jobs, and no deploy or migration command.
+- Credential-shape and tracked sensitive-artifact-name scans: passed; only the
+  two intentional names-only `.env.example` files were exempted.
+- `git diff --check`: passed; both package lockfiles remained unchanged.
+
+No deployment, provider setting, environment value, database connection,
+migration, production record, or synthetic record was created or changed by
+this reconciliation.

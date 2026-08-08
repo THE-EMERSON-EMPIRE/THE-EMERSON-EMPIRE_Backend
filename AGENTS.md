@@ -6,7 +6,7 @@ These rules apply to every contributor and automation agent working in this back
 
 - Preserve prior intern contributions and authorship. Make focused changes and do not rewrite unrelated work.
 - Keep this backend and the frontend as separate sibling Git repositories. Never nest another `.git` directory here.
-- Treat the root JavaScript foundation service and `epdg-backend-core` as distinct entrypoints until the authoritative Railway service and root directory are verified.
+- Treat the root JavaScript foundation service and `epdg-backend-core` as distinct entrypoints. July 26 release evidence verifies `epdg-backend-core` as the Railway entrypoint; never deploy the root foundation in its place. Reconfirm the current service root in the authenticated Railway dashboard before any provider operation.
 
 ## Safety
 
@@ -22,6 +22,7 @@ These rules apply to every contributor and automation agent working in this back
 - Use Node.js `22.23.1` and npm `11.17.0` unless a reviewed repository-wide upgrade changes all declarations together.
 - Use `npm ci` for deterministic installs. Do not update lockfiles incidentally.
 - Run root tests and, for `epdg-backend-core`, run build, lint, and route-security tests.
+- Keep GitHub Actions validation enabled for pull requests and pushes to `main`; CI must cover both entrypoints and must not deploy or run migrations.
 - Browser and deployment evidence must correspond to the current commit. Never count stale, skipped, neutral, or canceled results as passing verification.
 
 ## Release discipline
