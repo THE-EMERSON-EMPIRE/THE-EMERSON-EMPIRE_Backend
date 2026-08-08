@@ -1,6 +1,6 @@
 # Backend route and frontend contract audit
 
-Audit updated: 2026-07-25
+Audit updated: 2026-08-08
 
 This repository contains two independent Express entrypoints. No deployment target is inferred from their presence:
 
@@ -8,10 +8,12 @@ This repository contains two independent Express entrypoints. No deployment targ
 - EPDG TypeScript platform: `epdg-backend-core/src/index.ts`, default port `8000`.
 
 Provider evidence now maps Railway to the EPDG TypeScript entrypoint. The
-selected service, root, mapped host, current failure, and historical origin
+selected service, root, mapped host, dated release evidence, current readiness
+observation, and historical origin
 classifications are maintained in
-[RAILWAY_DEPLOYMENT_MANIFEST.md](RAILWAY_DEPLOYMENT_MANIFEST.md). The mapped
-host is not yet a healthy, releasable API origin.
+[RAILWAY_DEPLOYMENT_MANIFEST.md](RAILWAY_DEPLOYMENT_MANIFEST.md). July 26
+records a successful Production release; the August 8 canonical readiness
+response is `503`, with cause and active source SHA still unverified.
 
 ## Root JavaScript foundation
 
@@ -177,33 +179,35 @@ The active frontend calls under `epdg/src` were compared with this inventory.
 - The tracked schema does not define a reviewed RLS/grant matrix for `core` and `epdg` objects.
 - CV and submission storage access needs a reviewed private-file delivery contract. No public-bucket or long-lived-link migration was applied.
 - Certificate issuance storage, portfolio storage, mentor-session lifecycle/feedback, legal agreement versioning, and the complete company/school/mentor/admin permission matrix remain blocked.
-- The Railway mapping is verified, but the exact-head deployment is failed with
-  PostgreSQL authentication code `28P01`; the mapped host was unavailable in
-  current probes and is not release evidence.
+- The Railway mapping and July 26 successful Production release are historical
+  evidence. The canonical host returned the privacy-safe `503` unavailable
+  contract on August 8; authenticated dashboard evidence is required before
+  attributing that symptom to database, TLS, runtime, configuration, or code.
 - Certificate links now require the configured `FRONTEND_URL`; the service no longer falls back to an unverified domain.
-- Backend PR #2 preserves the runtime/authentication stabilization. No live
-  database migration or successful current-head Railway deployment is
-  represented by this audit.
+- Backend PR #2 merged at `7bfdb114363147ec2998d151dff22a786b2122ba`.
+  No live database migration or fresh August 8 deployment is represented by
+  this audit.
 
 ## Recorded local verification
 
-- Root tests: `9` passed, `0` failed.
-- EPDG TypeScript build: passed with no compile errors.
-- EPDG route/security tests: `38` passed, `0` failed.
-- EPDG lint: exit `0`, `0` errors, `161` warnings. The warnings were not suppressed.
-- `git diff --check`: passed with line-ending conversion notices only.
+- August 8 root locked install: passed; root tests `9/9`.
+- August 8 EPDG locked install and TypeScript build: passed.
+- August 8 EPDG route/release-safety tests: `57/57` passed.
+- August 8 EPDG lint: exit `0`, zero errors, `161` unsuppressed warnings.
+- Missing explicit smoke target: rejected with privacy-safe error-type-only
+  output.
 
-These July 11-12 results apply only to the earlier preserved release worktree.
-They are not evidence for later changes or deployment. Re-run the current source
-before release. No successful current-head Railway deployment, database
-migration, storage change, or merge has occurred.
-
-The July 25 uncommitted safety working tree, based on `f6f8670`, passed root
-tests `9/9`, EPDG build, EPDG route/release-safety tests `48/48`, and EPDG lint
-with `0` errors and `161` existing warnings. The smoke script also rejected a
-missing origin with the expected privacy-safe failure. These results must be
-repeated after commit and do not satisfy the Railway or live-database gates.
+These results apply to the current local worktree under Node `22.23.1` and npm
+`11.17.0`; they are not Railway health or deployment evidence. Earlier July
+verification remains preserved in the release journal.
 
 ## Rollback boundary
 
-No external backend state changed, so the current rollback boundary is the focused, reviewable local diff. A future code deployment must roll back by selecting the last verified deployment for the same Railway service and commit, then re-running health, CORS, authentication, and route-gate checks. A future database change must use a separately reviewed forward compensating migration; Git history rewrite, destructive schema rollback, and record replacement are prohibited.
+No external backend state changed, so the current rollback boundary is the
+focused, reviewable local diff. Before a future code deployment, verify and
+preserve a current rollback target in Railway; the July 26 deployment is only
+a historical known-good anchor until the dashboard confirms it is still
+available. Re-run health, CORS, authentication, and route-gate checks against
+the exact rollback commit. A future database change must use a separately
+reviewed forward compensating migration; Git history rewrite, destructive
+schema rollback, and record replacement are prohibited.

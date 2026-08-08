@@ -1,12 +1,12 @@
 # Railway deployment manifest
 
-Evidence status: 2026-07-26 (America/New_York).
+Evidence status: July 26 release history reconciled on 2026-08-08
+(America/New_York).
 
-This is the single repository record for the Railway target. Runtime code head
-`138608083efe273e7bd20ecd101a0efa5b6700f5` is a verified healthy
-release candidate in the Railway PR environment. Backend PR #2 is open and
-ready for review but remains unmerged. This evidence does not represent a
-Railway Production deployment, production promotion, or frontend release.
+This is the single repository record for the Railway target. It separates the
+July 26 PR-environment gate, the later July 26 merged Production release record,
+and the August 8 read-only operational observation. Historical success must not
+be represented as a current provider health check.
 
 ## Authoritative target
 
@@ -15,31 +15,25 @@ Railway Production deployment, production promotion, or frontend release.
 | Railway project | `epdg platform` (`34659053-7658-4d6e-8d0e-469f91ec6058`) |
 | Railway service | `tranquil-tenderness` (`fccb017f-ec3a-472e-ab19-f72011bf84f7`) |
 | Connected repository | `webdev692/THE-EMERSON-EMPIRE_Backend` |
-| Release-candidate branch | `codex/full-stack-release-2026-07-11` |
-| Verified runtime code head | PR #2 at `138608083efe273e7bd20ecd101a0efa5b6700f5` |
-| Verified PR environment | `THE-EMERSON-EMPIRE_Backend-pr-2` (`aa770481-aa3a-483b-8542-0e8913488213`) |
-| Verified PR deployment | `16c0c861-1d01-40fa-bed8-0330c1f88460` |
-| Verified PR API origin | `https://tranquil-tenderness-the-emerson-empirebackend-pr-2.up.railway.app` |
+| Merged backend release | PR #2; `main` commit `7bfdb114363147ec2998d151dff22a786b2122ba` |
+| July 26 Production deployment | `cbb535d2-bff0-43af-839b-26e53e5a97dc` |
+| July 26 Production status | Recorded as successful and active in Europe West (Amsterdam) |
+| Production API origin | `https://tranquil-tenderness-productionepdg.up.railway.app` |
 | Service root | `/epdg-backend-core` |
 | Builder/install | Nixpacks; Railway-managed deterministic install |
-| Runtime | Node `v22.14.0` |
+| July 26 recorded runtime | Node `v22.14.0`; provider npm version not recorded |
 | Build | `npm run build` |
 | Start | `npm start` |
 | Readiness | `GET /health` |
-| Authoritative Production candidate | `production_epdg` (not changed or deployed by this release-candidate verification) |
-| Mapped Production host | `https://tranquil-tenderness-productionepdg.up.railway.app` (not verified by the PR deployment) |
+| Railway environment | `production_epdg` in the July 26 release record; current mapping requires dashboard confirmation |
 | Database connection method | Separate server-only PostgreSQL variables; not `DATABASE_URL` |
 
-The mapped Production host is the only candidate production API origin. It
-must not be published as a working frontend origin until a separately
-authorized exact-main deployment passes Production readiness, CORS, database,
-and protected-route probes. The root JavaScript foundation is not the mapped
-Railway entrypoint.
+The Production origin above is the canonical origin recorded by the merged
+release. The root JavaScript foundation is not the mapped Railway entrypoint.
+This manifest does not authorize a provider change, redeploy, environment read,
+or migration.
 
-The branch above identifies the current PR #2 release candidate, not permission
-to change Railway's Production source policy.
-
-## Current verified PR release candidate
+## Historical PR-environment gate (2026-07-26)
 
 - Railway deployment `16c0c861-1d01-40fa-bed8-0330c1f88460` for runtime code
   head `138608083efe273e7bd20ecd101a0efa5b6700f5` is successful, active,
@@ -69,8 +63,60 @@ Current local verification at that runtime code head recorded root tests
 runtime dependency. Credential-pattern and deployment-log scans found no
 secret values.
 
-No backend merge, Railway Production change, frontend change, Netlify
-production promotion, database migration, or production-data action occurred.
+That verification occurred before merge and did not itself represent a
+Production change. It remains useful exact-head PR-environment evidence, but
+the merged release record below supersedes its statements about PR #2 being
+open.
+
+## Historical merged Production release record (2026-07-26)
+
+The final release record attached to
+[merged frontend PR #27](https://github.com/webdev692/Empire-emerson_frontend/pull/27)
+records:
+
+- backend PR #2 merged into `main` at
+  `7bfdb114363147ec2998d151dff22a786b2122ba`;
+- Railway Production deployment
+  `cbb535d2-bff0-43af-839b-26e53e5a97dc` successful and active in Europe West
+  (Amsterdam);
+- canonical Production API
+  `https://tranquil-tenderness-productionepdg.up.railway.app`;
+- strict CA-verified PostgreSQL TLS and a fresh `SELECT 1` before listen;
+- `GET /health` at HTTP `200`;
+- approved-origin CORS and fail-closed rejected-origin behavior;
+- authenticated and unauthorized route boundaries;
+- least-privileged synthetic QA cleanup with no retained synthetic rows;
+- application-startup migration-execution and artifact safety checks; and
+- build, deployment, runtime, and credential-pattern scans with no secret
+  values recorded.
+
+This list is a dated transcription of July 26 release evidence. It is not a
+fresh August 8 deployment inspection, and it does not reproduce environment
+values, credentials, private rows, or log contents.
+
+## Current operational observation (2026-08-08)
+
+At approximately 12:07 EDT (response `Date` header
+`2026-08-08 16:07:49 UTC`), three read-only requests to the canonical
+Production `/health` endpoint returned HTTP `503` and the privacy-safe service
+contract identifying `epdg-backend-core` with status `unavailable`. This proves
+that the endpoint answered; it does not identify the active source SHA or
+diagnose database, TLS, runtime, configuration, or application failure.
+
+Before any provider action, use the authenticated Railway dashboard to verify:
+
+- active deployment ID, source repository, branch, and commit;
+- configured service root and current Production domain mapping;
+- deployment state, region, health history, and restart/crash history;
+- recent build and application logs using only privacy-safe stage/error-class
+  evidence;
+- database connection and strict-TLS startup outcome;
+- effective Node and npm versions; and
+- whether any source, builder, branch, root, or variable-presence setting
+  drifted after July 26.
+
+Do not copy environment values into an audit, change a provider setting, or
+trigger a deployment while collecting this evidence.
 
 ## Superseded failure history
 
@@ -162,13 +208,18 @@ Production change.
 
 ## Rollback
 
-Before any later Production change, preserve its existing deployment as the
-Production rollback target. For the PR environment, runtime code head
+Before any later Production change, use the authenticated dashboard to preserve
+the then-current deployment as the rollback target. July 26 Production
+deployment `cbb535d2-bff0-43af-839b-26e53e5a97dc` is the historical known-good
+release anchor, but its present availability must be confirmed before it is
+named in an operational rollback plan. PR-environment runtime code head
 `138608083efe273e7bd20ecd101a0efa5b6700f5` and deployment
-`16c0c861-1d01-40fa-bed8-0330c1f88460` are the last verified rollback
-anchor. Redeploy that exact application artifact if a later documentation-only
-or application head fails, then repeat readiness, strict TLS, database, CORS,
-authentication, cleanup, and privacy-safe log checks.
+`16c0c861-1d01-40fa-bed8-0330c1f88460` remain pre-merge diagnostic evidence,
+not an assumed Production rollback target.
+
+After any separately authorized rollback, repeat readiness, strict TLS,
+database, CORS, authentication, cleanup, and privacy-safe log checks against
+the exact deployed commit.
 
 A documentation-only reconciliation requires no database compensation.
 Database rollback remains a separately reviewed forward compensating migration.

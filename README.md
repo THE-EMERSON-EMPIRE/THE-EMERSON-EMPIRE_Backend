@@ -5,14 +5,25 @@ This repository currently contains two separate Express entrypoints:
 - `server.js`: a small JavaScript API foundation for Agency inquiries, public contributions, and certificate-number verification.
 - `epdg-backend-core`: the TypeScript API that implements the EPDG authentication, intern, mentor, and administrator route surface.
 
-Provider evidence maps Railway to the `epdg-backend-core` entrypoint. Runtime
-code head `138608083efe273e7bd20ecd101a0efa5b6700f5` is verified healthy in the
-Railway PR environment at deployment
-`16c0c861-1d01-40fa-bed8-0330c1f88460`; this is release-candidate evidence,
-not a Production deployment or promotion.
+Provider evidence maps Railway to the `epdg-backend-core` entrypoint; the root
+foundation must not be deployed in its place. Backend PR #2 merged on July 26,
+2026, producing `main` commit
+`7bfdb114363147ec2998d151dff22a786b2122ba`. The
+[merged frontend PR #27](https://github.com/webdev692/Empire-emerson_frontend/pull/27)
+release record then recorded Railway Production deployment
+`cbb535d2-bff0-43af-839b-26e53e5a97dc` as successful and active in Europe West
+(Amsterdam) at `https://tranquil-tenderness-productionepdg.up.railway.app`.
+Those facts are dated July 26 release evidence, not a fresh provider check.
+
+At approximately 12:07 EDT on August 8, 2026 (response `Date` header
+`2026-08-08 16:07:49 UTC`), three read-only `/health` checks returned the
+privacy-safe EPDG `503 Service unavailable` readiness contract. That observation
+does not diagnose the cause. The active deployment, source SHA, service root,
+runtime, restart history, logs, and database/TLS startup now require
+authenticated Railway dashboard verification.
 [docs/RAILWAY_DEPLOYMENT_MANIFEST.md](docs/RAILWAY_DEPLOYMENT_MANIFEST.md) is
-the single target, origin-classification, and database-diagnosis record. Do not
-deploy the root foundation in its place.
+the single target, evidence-date, origin-classification, and dashboard-check
+record.
 
 ## Toolchain
 
@@ -34,6 +45,18 @@ npm --prefix epdg-backend-core run build
 npm --prefix epdg-backend-core run lint
 npm --prefix epdg-backend-core test
 ```
+
+Run the privacy-safe readiness smoke only with a reviewed, explicit target;
+there is no default origin:
+
+```powershell
+$env:EPDG_API_ORIGIN='https://reviewed-api-origin.example'
+npm run smoke:health
+```
+
+See
+[docs/RUNTIME_TOOLCHAIN_DRIFT_2026-08-08.md](docs/RUNTIME_TOOLCHAIN_DRIFT_2026-08-08.md)
+for the runtime, Node type-definition, and lint-debt inventory.
 
 Recorded July 11-12 local verification for the earlier preserved release worktree:
 
@@ -60,7 +83,7 @@ then-uncommitted release-safety changes:
 At that time, the working-tree result still required repetition after commit
 and on the exact Railway deployment; it was not platform evidence.
 
-Current July 26 verified release-candidate evidence for runtime code head
+July 26 pre-merge PR-environment evidence for runtime code head
 `138608083efe273e7bd20ecd101a0efa5b6700f5`:
 
 - Railway PR deployment `16c0c861-1d01-40fa-bed8-0330c1f88460`: successful
@@ -80,15 +103,22 @@ Current July 26 verified release-candidate evidence for runtime code head
   or `postgres-migrations` runtime dependency. Credential and deployment-log
   scans found no secret values.
 
+The later July 26 Production release record for merged backend `main` commit
+`7bfdb114363147ec2998d151dff22a786b2122ba` recorded the Production deployment
+and origin above, strict CA-verified PostgreSQL TLS, a fresh `SELECT 1` before
+listen, `/health` at `200`, approved and rejected CORS behavior, authentication
+boundaries, least-privileged synthetic QA cleanup, migration-execution safety,
+and build/deploy/runtime secret scans. No environment values or private rows
+are reproduced here.
+
 The EPDG server validates required environment configuration and database connectivity before listening. It does not apply migrations at startup. The root foundation requires an explicit production database connection and CORS allowlist; feature switches are fail-closed.
 
 The current EPDG compatibility boundary is deliberately fail-closed: generic `/api/signup` and `/api/portfolio/*` routes are not mounted, while token refresh, anonymous CV upload, agreement acceptance, legacy onboarding completion, private submission writes, session rating, and certificate issuance remain unavailable until their ownership, revocation, storage, or legal contracts are approved. Company and school dashboard data APIs are not implemented. Backend opportunity routes exist, but the active frontend does not consume them.
 
-The successful Railway evidence above applies only to the PR environment and
-the identified runtime code head. No backend merge, Railway Production
-deployment or promotion, database migration, production-data change, external
-storage change, frontend change, or Netlify production promotion is represented
-by this record.
+The two July 26 records are historical release evidence. Neither proves the
+current August 8 operational state, and the `503` observation does not establish
+a root cause. No repository command automatically deploys, changes Railway
+settings, or runs a migration.
 
 Environment variable names and purposes are documented in the two `.env.example` files. Never commit populated environment files.
 

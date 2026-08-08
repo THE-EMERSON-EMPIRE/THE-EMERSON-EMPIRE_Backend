@@ -1,19 +1,25 @@
 # Deployment and rollback runbook
 
-No deployment was performed as part of the 2026-07-11 backend audit.
+No deployment was performed as part of the 2026-07-11 backend audit. A later
+July 26 release record documents merged backend `main` commit
+`7bfdb114363147ec2998d151dff22a786b2122ba` and successful Railway Production
+deployment `cbb535d2-bff0-43af-839b-26e53e5a97dc`. That is historical evidence,
+not permission to deploy or proof of current health.
 
 ## Selected target
 
 Authenticated provider evidence selects project `epdg platform`, service
 `tranquil-tenderness`, repository `webdev692/THE-EMERSON-EMPIRE_Backend`, and
-service root `/epdg-backend-core`. The mapped production environment is
-`production_epdg`. Exact IDs, the mapped host, current failure, historical
-origin classifications, and safe database checks are maintained only in
+service root `/epdg-backend-core`. The July 26 record maps the Production
+environment as `production_epdg`. Exact IDs, the mapped host, dated evidence,
+historical origin classifications, and safe dashboard checks are maintained in
 [RAILWAY_DEPLOYMENT_MANIFEST.md](RAILWAY_DEPLOYMENT_MANIFEST.md).
 
-The selection does not establish release health. The current exact-head status
-is failed at the database-authentication stage, so the root JavaScript service
-must not be substituted and no frontend origin should be changed yet.
+The selection does not establish current release health. At approximately
+12:07 EDT on August 8, the canonical `/health` endpoint returned its
+privacy-safe HTTP `503` unavailable contract on three read-only checks. The
+cause and active source SHA remain unverified; the root JavaScript service must
+not be substituted.
 
 ## EPDG service commands
 
@@ -31,7 +37,7 @@ The checked-in `epdg-backend-core/railway.toml` encodes those commands. Node and
 ## Pre-deployment gates
 
 - Root tests, EPDG build/tests/lint, diff check, and credential scan pass at the
-  exact commit. July 11-12 results are historical and must be rerun.
+  exact commit. All recorded July results are historical and must be rerun.
 - Required environment variable names are present without logging their values.
 - Production CORS is an explicit allowlist.
 - The application contains no migration execution path, and the build excludes
@@ -48,10 +54,12 @@ The checked-in `epdg-backend-core/railway.toml` encodes those commands. Node and
 
 ## Unresolved release blockers
 
-- PostgreSQL authentication failure `28P01`; the separate production and PR
-  `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_SSL`
-  presence/pairing must be verified without recording values.
-- No successful exact-head Railway deployment or healthy canonical API origin.
+- The August 8 canonical readiness response is `503`; authenticated dashboard
+  evidence is required for the active deployment/source SHA, service root,
+  restart history, build/application logs, database/TLS startup, and effective
+  Node/npm runtime. The response alone does not diagnose the cause.
+- Repository Node `22.23.1` differs from the July 26 Nixpacks runtime record of
+  Node `v22.14.0`; runtime pinning remains a reviewed dashboard decision.
 - The final company, school, intern, mentor, administrator, and founder role/permission matrix.
 - The mentor-session state machine, scheduling ownership, update/cancellation permissions, and rating/notes visibility rules.
 - Private CV, submission, portfolio, and certificate storage ownership, bucket policy, upload, and time-limited delivery contracts.
@@ -62,9 +70,9 @@ The checked-in `epdg-backend-core/railway.toml` encodes those commands. Node and
 ## Environment changes
 
 Record environment changes by variable name only. Never copy values into this
-repository or release evidence. The service mapping is known, but frontend API
-origin changes remain blocked until the mapped host is healthy at the exact
-reviewed commit.
+repository or release evidence. The service mapping and canonical Production
+origin are historically recorded, but any frontend or provider change remains
+blocked until authenticated evidence establishes a healthy exact deployment.
 
 Do not change `VITE_API_URL`, database, email, storage, or signing variables
 until the release gates pass. `CORS_ORIGINS` was updated by name on July 12;
@@ -76,6 +84,7 @@ For a code-only Railway release, select the last verified deployment for the sam
 
 Database changes require their own reviewed compensating migration. Never drop, truncate, reset, or restore over production records as an application rollback shortcut.
 
-Current release state: no successful backend code deployment, live migration,
-external storage change, or merge. The July 12 names-only `CORS_ORIGINS`
-provider change is recorded in the release journal.
+The July 26 successful Production deployment is the historical release anchor;
+the dashboard must confirm whether it remains available before it is used as a
+rollback target. This documentation/CI reconciliation performs no deployment,
+provider change, live migration, external-storage action, or data write.
