@@ -28,11 +28,27 @@ Install: Railway/Nixpacks-managed
 Build: npm run build
 Start: npm start
 Health: /health
-Smoke (PowerShell): `$env:EPDG_API_ORIGIN='<reviewed credential-free origin>'; npm run smoke:health`
-Smoke (POSIX): `EPDG_API_ORIGIN=<reviewed credential-free origin> npm run smoke:health`
 ```
 
-The checked-in `epdg-backend-core/railway.toml` encodes those commands. Node and npm versions come from `package.json`.
+PowerShell readiness smoke with an explicit reviewed target:
+
+```powershell
+$env:EPDG_API_ORIGIN='https://reviewed-api-origin.example'
+npm run smoke:health
+```
+
+POSIX readiness smoke with an explicit reviewed target:
+
+```sh
+EPDG_API_ORIGIN='https://reviewed-api-origin.example' npm run smoke:health
+```
+
+The checked-in `epdg-backend-core/railway.toml` encodes the builder, build,
+start, readiness, and restart commands. The package manifests and `.nvmrc`
+declare the repository baseline of Node `22.23.1` and npm `11.17.0`; they do not
+prove the effective provider toolchain. July 26 release evidence recorded
+Nixpacks Node `v22.14.0` and did not record npm. Confirm both effective versions
+from the current authenticated Railway build evidence.
 
 ## Pre-deployment gates
 
