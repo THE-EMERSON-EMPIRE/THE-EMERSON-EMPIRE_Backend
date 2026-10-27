@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "enabled": false,
+  "enabled": true,
   "projectId": "c7b825f1-dfce-465d-9070-d85e7a302181",
   "environmentId": "003f223c-11f8-4bc9-8e78-0f34fe6bba6b",
   "serviceId": "92370910-1f75-421b-9910-c25240572cdf",
@@ -10,12 +10,12 @@
   "databaseName": "epdg_synthetic",
   "databaseUser": "epdg_synthetic_app",
   "instanceId": "66fa2f8c-ee7b-45f7-b303-20fb9f01cef6",
-  "frontendOrigin": "https://epdg.netlify.app",
+  "frontendOrigin": "https://hosted-practice--epdg.netlify.app",
   "frontendOrigins": [
-    "https://epdg.netlify.app",
-    "https://hosted-practice--epdg.netlify.app"
+    "https://hosted-practice--epdg.netlify.app",
+    "https://epdg.netlify.app"
   ],
-  "backendOrigin": null,
+  "backendOrigin": "https://epdg-practice-api-synthetic-hosted.up.railway.app",
   "crmOrigin": "https://emerson-crm.netlify.app",
   "loginAlias": "admin@theemersonempire.info",
   "baselineSha256": "263b273cd4d636bab100f1fac61b00d8cb88c99753182cd4cce19d524ad6b30f",

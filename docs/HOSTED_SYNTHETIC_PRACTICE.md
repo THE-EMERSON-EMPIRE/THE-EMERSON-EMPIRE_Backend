@@ -2,8 +2,9 @@
 
 This is a separate hosted synthetic runtime, not a flag that promotes the laptop
 runner or the legacy backend. Owner/admin, registration, invitations, profile
-editing and role management remain closed. Its source profile is disabled until
-verified cloud identities and HTTPS origins are pinned. No real HR records are
+editing and role management remain closed. Its reviewed source profile pins
+verified cloud identities and HTTPS origins; runtime access still requires valid
+configuration, strict TLS and the complete isolated schema. No real HR records are
 part of its seed or API.
 
 ## Entry and identity

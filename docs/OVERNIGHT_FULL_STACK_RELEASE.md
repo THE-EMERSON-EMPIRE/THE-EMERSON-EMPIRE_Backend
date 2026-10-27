@@ -337,3 +337,35 @@ keeps the profile/bridge off or stops the owned app service while preserving
 identity, decisions, nonces, submissions and feedback. Any database correction
 must be reviewed and forward-only; do not rewrite applied history or delete
 learning evidence.
+
+## 2026-10-27 — Pin authorized hosted synthetic HTTPS origins
+
+Enabled the reviewed hosted synthetic source profile after explicit authorization
+for its public HTTPS endpoint and private runtime credential destinations. The
+backend audience is the provider-verified
+`https://epdg-practice-api-synthetic-hosted.up.railway.app` origin. Recovery links
+use `https://hosted-practice--epdg.netlify.app` for acceptance testing; the exact
+production frontend remains an allowed origin but is not the current recovery
+destination. The CRM origin remains `https://emerson-crm.netlify.app`.
+
+All provider IDs, database identity/role, instance, baseline/isolation hashes and
+operator bootstrap service pin are unchanged. The preferred login alias still
+resolves only to the existing fictional learner B account; database identities
+and recovery-mail recipients remain `.invalid`. Owner/admin, registration,
+invitations and role-management controls remain closed.
+
+At `2026-10-27T18:25:57.184Z`, the pinned Node 22.23.1/npm 11.17.0 toolchain
+passed build, **139 core tests**, **nine root tests** and lint with zero errors
+and 161 existing warnings in the isolated release checkout. The source change
+contains no credentials, private key, real record or runtime state. The original
+working source remains unchanged. Automation-assisted configuration and
+verification used the connected repository account's verified commit identity.
+
+This source change does not apply database schema, inject credentials or deploy
+the API. Runtime access still requires exact configuration, strict CA/hostname
+verification, the reviewed isolated schema and current readiness checks. Hosted
+bootstrap, actual API deployment and end-to-end acceptance remain separately
+verified operations. Production recovery-link promotion follows acceptance.
+Containment disables the source profile/bridge or stops the owned service while
+retaining decisions, nonces and immutable learning evidence; never reverse the
+applied migration history or delete retained work.
