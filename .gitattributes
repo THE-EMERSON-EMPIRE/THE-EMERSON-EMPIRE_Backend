@@ -1,1 +1,6 @@
 epdg-backend-core/src/db/migrations/*.sql text eol=lf
+epdg-backend-core/security-migrations/*.sql text eol=lf
+epdg-backend-core/learning-migrations/*.sql text eol=lf
+epdg-backend-core/hosted-practice-migrations/*.sql text eol=lf
+epdg-backend-core/scripts/local-synthetic/baseline.sql text eol=lf
+epdg-backend-core/scripts/local-synthetic/isolation.sql text eol=lf

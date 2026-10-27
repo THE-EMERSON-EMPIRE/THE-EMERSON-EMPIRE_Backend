@@ -3,12 +3,13 @@ import { CorsOptions } from 'cors';
 const developmentOrigins = ['http://localhost:5173', 'http://localhost:5174'];
 
 export function getAllowedOrigins(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (env.PORTAL_ORIGIN) return [env.PORTAL_ORIGIN];
   const configured = (env.CORS_ORIGINS ?? '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
 
-  if (env.NODE_ENV === 'production') {
+  if (env.NODE_ENV === 'production' || env.EPDG_SYNTHETIC_MODE === '1') {
     return [...new Set(configured)];
   }
 
@@ -28,7 +29,7 @@ export const corsOptions: CorsOptions = {
     return callback(error);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'X-CSRF-Token', 'X-EPDG-Request'],
   credentials: true,
   maxAge: 600,
 };

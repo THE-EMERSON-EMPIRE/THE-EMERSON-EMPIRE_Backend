@@ -1,0 +1,35 @@
+{
+  "file": "001-synthetic-learning.sql",
+  "version": "2026-10-24-synthetic-learning-v1",
+  "sha256": "db3ab105acccb5e6f82bc3bca1a96eb93d4eb3993d6713f87bf8c374bc71a8fb",
+  "extensions": [{
+    "file": "002-synthetic-assignment-submissions.sql",
+    "version": "2026-10-24-synthetic-assignments-v1",
+    "sha256": "2f781d51154eb64a026c75ea0ef4cfbb265e9e77a6881f0b9d828c0a5f245d21"
+  }, {
+    "file": "003-synthetic-assignment-prompt-lines.sql",
+    "version": "2026-10-24-synthetic-assignment-prompt-lines-v1",
+    "sha256": "ef724c0ce559585ff70208283558959b9de6ce9bbe9386dd7e113c7c30c37a90"
+  }, {
+    "file": "004-synthetic-assignment-attachments.sql",
+    "version": "2026-10-24-synthetic-assignment-attachments-v1",
+    "sha256": "1a0623618a408181e32e2ffb9c9784ddbd3b0ef7e81bbec32bf92f12eb2f7bdc"
+  }, {
+    "file": "005-synthetic-mentor-review.sql",
+    "version": "2026-10-24-synthetic-mentor-review-v1",
+    "sha256": "1af6773a8c6b1c30c705032fe9d5f656bdd75027a70830a6812c3361004ded1e"
+  }, {
+    "file": "006-synthetic-assignment-revisions.sql",
+    "version": "2026-10-24-synthetic-assignment-revisions-v1",
+    "sha256": "cfa51624a3c7e8e3b552f12cb5dc6c2a5769fa78fd64258da4e62151f6c92b0b"
+  }, {
+    "file": "007-synthetic-crm-handoff.sql",
+    "version": "2026-10-24-synthetic-crm-handoff-v1",
+    "sha256": "2f32810a5956999693d98e3ea9f4ca200da53ae6530da3fb1e08c51ff54a75ca"
+  }, {
+    "file": "008-synthetic-handoff-reviewer-provenance.sql",
+    "version": "2026-10-24-synthetic-handoff-reviewer-provenance-v1",
+    "sha256": "cb742fc41ce3b915585d779423dbc69ebc26397fe976f598f9d92f0479519d06"
+  }],
+  "secured_tables": 13
+}

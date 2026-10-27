@@ -1,4 +1,6 @@
 import { X509Certificate } from 'node:crypto';
+import { isHostedPractice, validateHostedPracticeEnvironment } from '../hosted-practice/profile';
+import { normalizeHostedPracticeCa } from '../hosted-practice/tls';
 
 const PEM_BEGIN = '-----BEGIN CERTIFICATE-----';
 const PEM_END = '-----END CERTIFICATE-----';
@@ -73,6 +75,10 @@ export function requiresDatabaseTls(
 export function getDatabaseSslConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): false | StrictDatabaseTlsConfig {
+  if (isHostedPractice(env)) {
+    validateHostedPracticeEnvironment(env);
+    return { ca: normalizeHostedPracticeCa(env.HOSTED_PRACTICE_DB_CA_CERT), rejectUnauthorized: true };
+  }
   if (!requiresDatabaseTls(env)) {
     return false;
   }

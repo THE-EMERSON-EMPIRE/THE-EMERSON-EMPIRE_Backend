@@ -294,3 +294,46 @@ For PR-environment application rollback, redeploy exact runtime code head
 strict TLS, `SELECT 1`, readiness, CORS, authentication, cleanup, and
 privacy-safe log checks. No database rollback or migration compensation is
 required for the documentation reconciliation.
+
+## 2026-10-27 — Disabled hosted synthetic application source candidate
+
+Prepared the hosted application and explicit operator bootstrap source atop the
+sealed-listener commit `04da9f7ad5e8c70673e04a9125370457491529cb`. The candidate
+carries the prior cookie-session, recovery, scoped learning, submissions, private
+attachments, mentor feedback, revisions and CRM handoff dependencies as focused
+new modules and forward migration files. Existing authorship/history and the
+schema baseline are preserved. Owner/admin, registration, invitations and role
+management remain closed; no real HR records or operational credentials belong
+in this source or synthetic database.
+
+The dedicated hosted entry requires strict CA and hostname verification,
+NOBYPASSRLS readiness, exact reviewed provider/database/origin pins and private
+runtime access. The source profile remains disabled, with the backend origin
+unassigned. Verified frontend/CRM source pins are present, including the exact
+hosted-practice preview. These pins do not activate the bridge. Normal startup
+cannot run migrations; the separate bootstrap job requires its own credentials,
+an empty recognized database and reviewed immutable source hashes.
+
+At `2026-10-27T14:16:36.188Z`, the isolated checkout's pinned Node 22.23.1/npm
+11.17.0 deterministic root/core installs, build, **139 core tests**, **nine root
+tests** and lint passed. Lint had zero errors and 161 existing warnings. Tests
+use synthetic fixtures, mocked database results and temporary loopback servers.
+The original working checkout was not changed. Source-only verification receipts
+are kept outside this public repository in workspace evidence; no private test
+state, credential, key, capture content, compiled artifact or evidence file is
+included in the candidate.
+
+The checksum-frozen baseline remains SHA-256
+`263b273cd4d636bab100f1fac61b00d8cb88c99753182cd4cce19d524ad6b30f`.
+Its existing trailing blank line is retained as a cosmetic diff-check exception;
+all other candidate whitespace checks pass. Explicit LF attributes preserve the
+baseline and new migration checksums across platform checkouts. No migration
+checksum was changed to accommodate formatting.
+
+Commit, push, hosted bootstrap, deployed TLS, authenticated hosted CRM delivery,
+same-origin proxy/browser acceptance and production publication remain separate
+review/release steps. This source candidate performs none of them. Containment
+keeps the profile/bridge off or stops the owned app service while preserving
+identity, decisions, nonces, submissions and feedback. Any database correction
+must be reviewed and forward-only; do not rewrite applied history or delete
+learning evidence.

@@ -2,6 +2,33 @@
 
 Express and TypeScript API for the EPDG platform.
 
+## Hosted synthetic practice candidate
+
+The dedicated hosted entry is `dist/hosted-practice/index.js`. It mounts only
+protected portal APIs, private service-to-service CRM handoff, and health checks.
+Owner/admin, registration, invitation and role-management controls stay closed.
+The source profile is disabled until all verified provider identities and HTTPS
+origins, including the backend origin, are pinned and reviewed. The legacy
+`dist/index.js` entry rejects practice flags.
+
+From this directory, use the pinned Node 22.23.1/npm 11.17.0 toolchain to run
+`npm ci`, `npm run build`, `npm run lint`, and `npm test`. A configured hosted
+service starts with `node dist/hosted-practice/index.js`; its startup never
+applies migrations or seeds records.
+
+The separate, explicit operator job is
+`node scripts/hosted-practice/bootstrap.cjs`. Preserve the repository checkout
+layout because it also reads the source-controlled operator identity profile at
+`../scripts/hosted-practice/operator-profile.json`. Only that job receives its
+separate bootstrap credentials through private runtime injection. It refuses
+nonempty unrecognized databases and creates only the four fictional `.invalid`
+practice identities. No real applicant, resume or onboarding records are seeded.
+
+See [`../docs/HOSTED_SYNTHETIC_PRACTICE.md`](../docs/HOSTED_SYNTHETIC_PRACTICE.md)
+for transport, isolation, mail-capture, HMAC, verification and containment rules.
+The older route inventory below is historical context; it does not authorize
+mounting legacy routes or privileged controls in the hosted entry.
+
 ## Local workflow
 
 Use Node.js `22.23.1` and npm `11.17.0`.
