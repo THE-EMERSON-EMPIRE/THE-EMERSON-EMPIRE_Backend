@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "enabled": false,
+  "enabled": true,
   "databaseProvider": "supabase",
   "projectId": "c7b825f1-dfce-465d-9070-d85e7a302181",
   "environmentId": "003f223c-11f8-4bc9-8e78-0f34fe6bba6b",
@@ -17,8 +17,8 @@
   "inheritedPublicTemp": true,
   "managedSchemaAclMd5": "9f660b1c2afc886265bde5e320b059be",
   "instanceId": "1a166c34-cddf-4bb5-9fff-2c44433f135c",
-  "frontendOrigin": "https://hosted-practice--epdg.netlify.app",
-  "frontendOrigins": ["https://hosted-practice--epdg.netlify.app", "https://epdg.netlify.app"],
+  "frontendOrigin": "https://epdg.netlify.app",
+  "frontendOrigins": ["https://epdg.netlify.app", "https://hosted-practice--epdg.netlify.app"],
   "backendOrigin": "https://epdg-practice-api-synthetic-hosted.up.railway.app",
   "crmOrigin": "https://emerson-crm.netlify.app",
   "loginAlias": "admin@theemersonempire.info",

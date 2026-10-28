@@ -6,6 +6,7 @@ const {EventEmitter}=require('node:events');
 const {createHash,X509Certificate}=require('node:crypto');
 const {rootCertificates}=require('node:tls');
 const profile=require('../src/hosted-practice/supabase-profile.json');
+const originalProfile=JSON.stringify(profile);
 const manifest=require('../src/hosted-practice/supabase-schema-manifest.json');
 const operator=require('../../scripts/hosted-practice/operator-profile.json');
 const email='learner-a@epdg.invalid';
@@ -201,7 +202,7 @@ test('fixed learner A flow proves selected database, exercises recovery and rest
  assert.equal(io.state.forgot,1);assert.ok(io.state.resetAttempts>=2,'Token reuse is tested');assert.equal(io.state.restores,1);
  assert.ok(io.state.events.indexOf('target-session-proof')<io.state.events.indexOf('/api/auth/forgot-password'));
  assert.ok(io.state.events.filter(x=>x==='target-session-proof').length>=3,'Initial, temporary and restored logins are bound to selected DB');
- assert.equal(io.state.ended,1);assert.equal(profile.enabled,false);
+ assert.equal(io.state.ended,1);assert.equal(JSON.stringify(profile),originalProfile);
  assert.ok([...io.state.sessions.values()].every(s=>!s.valid),'Every test-created session is invalid at completion');
  const config=io.state.connection;assert.equal(config.host,profile.databaseConnectionHost);
  assert.equal(config.user,'postgres.'+profile.supabaseProjectRef);assert.equal(config.database,'postgres');
