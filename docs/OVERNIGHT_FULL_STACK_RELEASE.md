@@ -720,3 +720,52 @@ all four tests with network/environment/filesystem/subprocess permissions denied
 plus frozen checks, lint and formatting against the unchanged canonical Git
 blobs, avoiding Windows checkout line-ending differences. Exact-head GitHub
 results remain a separate required check before source acceptance.
+
+## 2026-10-28 — Mentor transaction query planning
+
+The actual isolated Supabase API at source
+`ef2ff2a6ea47be26ce7d462cf929a6335f7049fe` exposed a slow authorized mentor
+review: its first detail request took 15.697 seconds, and a later draft request
+timed out at the client after 20 seconds even though draft revision 1 persisted.
+The restricted app role, verified against the selected synthetic instance, ran
+bounded read-only EXPLAIN diagnostics using the generated app credential and
+public provider CA. No operator credential or private record content was logged;
+no database write, schema change or persistent setting change was requested.
+JIT was already off. The exact mentor context query took 5,862.169 ms of
+execution with the default join planner settings and 119.403 ms with
+transaction-local `join_collapse_limit=1` and `from_collapse_limit=1`. Its plan
+retained 12 nodes and one result row. Direct scope-predicate planning fell from
+6,535.189 ms to 63.823 ms, and execution from 735.262 ms to 25.992 ms; both plans
+retained 37 nodes and one result row. This is measured planning behavior on the
+small synthetic fixture, not a general production performance guarantee.
+
+The workspace evidence files are
+`build-evidence/epdg-hosted-synthetic-2026-10-28/mentor-readonly-plan-ef2ff2a-initial.json`
+and `mentor-readonly-plan-ef2ff2a-fixed-scope.json`. The initial run completed its
+three EXPLAIN measurements but conservatively failed when the connection failed
+during rollback after the third measurement. Its failed receipt is preserved.
+The separate fixed-order scope-body probe passed and rolled back successfully.
+
+The source change adds only two awaited `SET LOCAL` commands in `withMentor`,
+after the existing handoff transaction configuration and before unchanged
+readiness checks and mentor queries. All five mentor operations share this path.
+Failure of either setting returns a generic unavailable error and lets the
+existing authenticated transaction roll back. Commit or rollback ends the local
+settings; ordinary session and learner operations do not receive them. Existing
+predicate SQL, authorization, locks, RLS, readiness, schema manifests, migrations,
+Docker inputs and provider identity pins are unchanged. Focused regression tests
+exercise the real `PortalService` BEGIN/COMMIT/ROLLBACK boundary with an injected
+pg client, including all mentor operations, either setting failing before work,
+later work failure, safe errors and pooled-client reuse. Required checks and
+independent review must pass at the exact PR head before the release owner
+deploys and repeats hosted acceptance. This branch performs no provider write,
+deployment, merge or publication. If runtime acceptance regresses, stop the
+release and fix forward while preserving the current API and locked frontend.
+
+Local verification used pinned Node 22.23.1 and npm 11.17.0 with deterministic
+`npm ci` at both entrypoints. The unchanged default core `npm test` passed its
+build and all 179 tests; root `npm test` passed all 9 tests. Both suites reported
+zero failures and skips. Core lint passed with zero errors and the same 161
+existing warnings. The three added transaction regression tests are included
+in that 179-test result. Exact-head GitHub CI and independent full-diff review
+remain separate required evidence before a controlled runtime release.

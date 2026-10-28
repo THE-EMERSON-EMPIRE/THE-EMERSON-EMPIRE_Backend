@@ -69,6 +69,11 @@ export class MentorReviewService {
     requireSyntheticLearning();
     return this.portal.withAuthenticatedSession(raw, async (client, user) => {
       requireMentor(user); await configureHandoffTransaction(client);
+      // Bound planning of the many-join scope predicate for this transaction only.
+      try {
+        await client.query('SET LOCAL join_collapse_limit TO 1');
+        await client.query('SET LOCAL from_collapse_limit TO 1');
+      } catch { throw new PortalError(503, 'Mentor review is unavailable'); }
       await checkLearningSchema(client); await checkHandoffSchema(client); return work(client, user);
     });
   }
