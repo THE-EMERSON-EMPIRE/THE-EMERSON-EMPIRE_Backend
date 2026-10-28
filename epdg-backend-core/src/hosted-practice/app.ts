@@ -57,7 +57,7 @@ export function createHostedPracticeApp(options: { readinessCheck?: () => Promis
     // recovery or learning work. Do not retain a successful readiness promise.
     void (options.readinessCheck ?? checkHostedReadiness)().then(() => next(),
       () => next(new PortalError(503, 'Hosted practice is unavailable')));
-  }, express.json({ limit: 16384, strict: true }), createPortalRouter());
+  }, express.json({ limit: 16384, strict: true, inflate: false }), createPortalRouter());
   app.use((_req, _res, next) => next(new PortalError(404, 'Route not found')));
   app.use(errorHandler);
   return app;

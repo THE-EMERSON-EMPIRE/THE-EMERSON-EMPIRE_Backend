@@ -369,3 +369,40 @@ verified operations. Production recovery-link promotion follows acceptance.
 Containment disables the source profile/bridge or stops the owned service while
 retaining decisions, nonces and immutable learning evidence; never reverse the
 applied migration history or delete retained work.
+
+## 2026-10-28 — Close compressed JSON crash path and isolate API image build
+
+Reachability triage of the exact hosted entry reproduced 19 vulnerable package
+entries in the locked install. One request-path blocker was identified in
+body-parser 1.20.5: compressed JSON was accepted before authentication on the
+hosted API. Applied the maintainer's documented `inflate: false` workaround to
+that JSON parser. The raw HMAC receiver's existing no-inflation guard is
+unchanged. No dependency version, lockfile, schema, profile pin or privilege
+policy changed. The inventory count remains unchanged; this is a call-path
+mitigation, not a clean audit claim.
+
+A disposable child-process regression rejects compressed frames and trailing
+bytes with 415, confirms ordinary JSON still reaches its field validation, waits
+for delayed decoder failures, checks health remains available and requires a
+clean child exit. It installs no uncaught-exception handler. Readiness, shutdown
+and forced cleanup are bounded. At `2026-10-28T14:02:25.117Z`, build, **140 core
+tests**, **nine root tests** and lint passed with zero errors and 161 existing
+warnings using Node 22.23.1/npm 11.17.0. The staged parser/test/image delta was
+independently reviewed.
+
+Added the named API-only multi-stage `Dockerfile.hosted-practice` and its
+specific default-deny build-context ignore file. Both stages use the verified
+official Node 22.23.1 bookworm-slim manifest and explicitly install/assert npm
+11.17.0. The build uses normal deterministic install/compilation; runtime uses
+the locked production dependencies, compiled assets, non-root `node` user and
+dedicated hosted command. It includes no Chromium/snapd installation, build
+credential arguments or private environment/key copies. Its build context must
+be `epdg-backend-core`. The operator bootstrap remains a separate source job.
+
+No Docker/Podman engine was available locally. Public official image/npm
+metadata, source instructions and compiled asset requirements were checked;
+no successful container build, provider rollout or runtime image acceptance is
+claimed. The deployment owner must build/select this Dockerfile and verify the
+exact image, toolchain and fixed API before production release. Existing
+privileged controls remain closed. Containment stops the owned API or keeps its
+bridge disabled while retaining all synthetic decisions and learning evidence.

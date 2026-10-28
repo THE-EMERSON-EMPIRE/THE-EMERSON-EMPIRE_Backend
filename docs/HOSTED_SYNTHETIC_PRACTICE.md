@@ -54,6 +54,11 @@ an exact approved frontend Origin, `X-EPDG-Request: portal` and the session CSRF
 token. Cross-site Fetch metadata and bearer authentication remain rejected.
 The backend does not add CORS access. Hosted rate-limit buckets are fixed server
 buckets rather than values derived from untrusted forwarding headers.
+Hosted JSON rejects compressed request bodies with `inflate: false`; the raw
+HMAC receiver retains its separate no-inflation setting. This applies the
+[body-parser maintainer's documented workaround](https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828)
+for the compressed-frame trailing-bytes process-crash advisory without changing
+the dependency lockfile.
 
 Hosted health and portal API JSON envelopes include `environment: synthetic-hosted`
 and `privileged_controls_available: false`, including authentication responses.
@@ -143,6 +148,24 @@ messages contain private reset links, so their contents must never enter logs,
 browser bundles, ordinary evidence or shared reports. Operator access is private.
 
 ## Verification and release
+
+The dedicated API image uses `epdg-backend-core/Dockerfile.hosted-practice` with
+`epdg-backend-core` as its build context. From that directory, build with
+`docker build -f Dockerfile.hosted-practice -t epdg-hosted-practice .`.
+The official Node 22.23.1 bookworm-slim image is pinned by manifest digest in both
+stages, and both stages install/assert npm 11.17.0. The builder runs the normal
+`npm ci` and `npm run build`; the runtime installs the same lockfile with
+`npm ci --omit=dev`, receives the compiled assets, uses `USER node`, and starts
+only `dist/hosted-practice/index.js`. It installs no browser or operating-system
+browser packages. The Dockerfile-specific default-deny context excludes private
+environment/state/key files, local dependencies, tests and evidence.
+
+This image is API-only. It does not contain the operator bootstrap source or
+credentials; that job retains its separate reviewed checkout/configuration.
+Selecting this named Dockerfile is an explicit deployment setting and does not
+change the legacy package start/build commands. Verify the resulting provider
+image, exact toolchain, user and readiness before release; source checks do not
+prove a successful container build.
 
 The backend source checkpoint uses Node 22.23.1/npm 11.17.0. Build, full core/root
 tests and lint results are recorded under workspace
