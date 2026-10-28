@@ -639,3 +639,16 @@ caused the initial format-only failure; exact canonical Git blobs passed in an
 isolated evidence directory without changing source bytes. The source profile
 remains disabled. Hosted operator repeat, API retargeting, recovery, CRM
 roundtrip and production publication remain separate acceptance gates.
+
+## 2026-10-28 — Native intake checks in backend CI
+
+Added a separate native Deno job to the existing read-only backend workflow.
+Official denoland/setup-deno v2 is pinned to verified commit
+`22d081ff2d3a40755e97629de92e3bcbfa7cf2ed`; the runtime is pinned to Deno
+2.8.1 and checked explicitly. The job runs the four native tests with network,
+environment, filesystem and subprocess permissions denied, frozen type checks,
+lint and formatting. Checkout does not persist credentials. Existing root and
+core jobs and toolchain policies are unchanged. The workflow adds no database,
+service, runtime credential, migration or deployment step. Source, SQL, profile
+and provider configuration are unchanged by this separate CI commit. Its actual
+current-head result must pass before the next operator release is accepted.
