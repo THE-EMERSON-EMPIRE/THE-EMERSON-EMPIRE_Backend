@@ -1,0 +1,5 @@
+# Merge only this new function stanza into the reviewed project config.
+# Public capture has strict synthetic/origin/rate controls; pull/ack authenticate
+# their exact body/destination/nonce/timestamp with an independent HMAC key.
+[functions.website-intake-synthetic]
+verify_jwt = false
