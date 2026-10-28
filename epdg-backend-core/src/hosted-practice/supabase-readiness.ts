@@ -58,15 +58,15 @@ export async function checkSupabaseIdentity(client: PoolClient, p: SupabasePract
       AND n.nspname<>ALL($1::text[]) AND n.nspname<>ALL($2::text[])) AS unknown_namespace,
     EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname=ANY($2::text[]) AND has_schema_privilege(current_user,n.oid,'CREATE')) AS managed_create,
     EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname=ANY($2::text[]) AND CASE WHEN c.relkind IN ('r','p','v','m','f') THEN
+      WHERE n.nspname=ANY($2::text[]) AND has_schema_privilege(current_user,n.oid,'USAGE') AND CASE WHEN c.relkind IN ('r','p','v','m','f') THEN
       has_table_privilege(current_user,c.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER') ELSE false END) AS managed_table,
     EXISTS(SELECT 1 FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname=ANY($2::text[]) AND a.attnum>0 AND NOT a.attisdropped AND
+      WHERE n.nspname=ANY($2::text[]) AND has_schema_privilege(current_user,n.oid,'USAGE') AND a.attnum>0 AND NOT a.attisdropped AND
       CASE WHEN c.relkind IN ('r','p','v','m','f') THEN has_column_privilege(current_user,c.oid,a.attnum,'SELECT,INSERT,UPDATE,REFERENCES') ELSE false END) AS managed_column,
     EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=ANY($2::text[])
-      AND CASE WHEN c.relkind='S' THEN has_sequence_privilege(current_user,c.oid,'USAGE,SELECT,UPDATE') ELSE false END) AS managed_sequence,
+      AND has_schema_privilege(current_user,n.oid,'USAGE') AND CASE WHEN c.relkind='S' THEN has_sequence_privilege(current_user,c.oid,'USAGE,SELECT,UPDATE') ELSE false END) AS managed_sequence,
     EXISTS(SELECT 1 FROM pg_proc f JOIN pg_namespace n ON n.oid=f.pronamespace WHERE n.nspname=ANY($2::text[])
-      AND f.prosecdef AND has_function_privilege(current_user,f.oid,'EXECUTE')) AS managed_definer,
+      AND has_schema_privilege(current_user,n.oid,'USAGE') AND f.prosecdef AND has_function_privilege(current_user,f.oid,'EXECUTE')) AS managed_definer,
     EXISTS(SELECT 1 FROM pg_roles r CROSS JOIN pg_namespace n WHERE r.rolname=ANY($3::text[]) AND n.nspname=ANY($1::text[]) AND
       (has_schema_privilege(r.oid,n.oid,'USAGE,CREATE') OR
        EXISTS(SELECT 1 FROM pg_class c WHERE c.relnamespace=n.oid AND CASE WHEN c.relkind IN ('r','p','v','m','f') THEN

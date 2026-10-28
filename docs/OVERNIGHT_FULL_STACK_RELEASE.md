@@ -595,3 +595,47 @@ The coordinated two-file follow-up fixes the earlier capture-error visibility li
 Native Deno `2.8.1` passed all four tests with network, environment, read, write and subprocess runtime permissions denied, plus lint, frozen checks and formatting. Earlier root/core checks remain historical evidence; the unchanged API entrypoints were not rerun for this focused handler/test correction. Only the handler, its regression test and this journal change. Protocol, runtime configuration, migration and CRM source remain unchanged; the existing foundation-review migration is preserved and the EPDG eleven-migration bundle is absent.
 
 The correction updates the existing draft PR #6 branch. No deployment, database operation, runtime secret change, source merge, real record import or mail delivery occurred. Hosted acceptance remains separate. A focused forward correction or revert of this handler change can compensate without changing stored receipts or legacy workflows.
+
+## 2026-10-28 — Canonical source integration and verified Supabase sessions
+
+Merged canonical main `7a68f1acca420d82c7d1799cf0b5e9f37a343cc4` into
+the portal branch through ordinary merge `893ae83920e40ce5bd5b91a084b814294598ef95`.
+Both journal histories are retained. The eight intake files match canonical main
+and every one of the eleven EPDG migration hashes is unchanged. Intake source
+coexistence does not authorize applying its migration to the portal database;
+the operator continues to select only its explicit eleven-file manifest. No
+unfiltered Supabase push or migration discovery is part of this release.
+
+The corrected private operator attempt created the fresh seven application
+schemas, 33 RLS tables and four fictional accounts, preserving the exact managed
+schema ACL pin and identity markers, then rejected runtime readiness. Read-only
+provider evidence identified PUBLIC SELECT on two managed statistics views
+whose schema grants the app no USAGE. The managed table/column/sequence/definer
+checks now require schema USAGE and object privilege together. Raw browser ACL
+checks, ownership, unknown namespaces, CASE type guards and catalog pins remain
+strict. Fresh actual PG17 sessions passed 15 access regressions: hidden grants
+remain inaccessible, adding USAGE makes readiness fail, and restored fresh
+sessions pass. Revoking USAGE is not claimed to remediate previously resolved
+statements in existing sessions.
+
+An actual restricted-app TLS session showed that Supavisor ignored connection
+startup options. Explicit session settings passed the unchanged identity and
+full access contract. Runtime pool checkout now awaits fixed search-path,
+read/write-mode and statement-timeout SETs plus strict readback before exposing
+a client. Promise and callback checkout, including Pool.query, share the gate;
+reused clients are checked again, and failed setup destroys the checkout with a
+fixed privacy-safe 503. Bootstrap operator/runtime clients use the same setup;
+the recovery operator explicitly selects read-only mode before its SELECT-only
+data reads. No schema, role, ACL, fixture, credential or provider pin changes
+are made by this session configuration.
+
+The combined default core build/test command passed 176/176, root tests 9/9,
+and lint zero errors with the same 161 warnings. The eight new session tests
+cover startup-option loss, deferred promise/callback exposure, Pool.query,
+reuse, destruction and redacted acquire/cleanup failures. Native Deno 2.8.1
+passed all four intake tests with network/environment/filesystem/subprocess
+permissions denied, frozen checks, lint and formatting. Windows checkout CRLF
+caused the initial format-only failure; exact canonical Git blobs passed in an
+isolated evidence directory without changing source bytes. The source profile
+remains disabled. Hosted operator repeat, API retargeting, recovery, CRM
+roundtrip and production publication remain separate acceptance gates.

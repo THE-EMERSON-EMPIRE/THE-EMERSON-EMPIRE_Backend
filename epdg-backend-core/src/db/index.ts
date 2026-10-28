@@ -1,6 +1,7 @@
 import { Pool } from 'pg';
 import { getDatabaseSslConfig } from './tls';
 import { isHostedPractice, validateHostedPracticeEnvironment } from '../hosted-practice/profile';
+import { initializeSupabasePool } from './supabase-session';
 
 export function databaseSearchPath(env: NodeJS.ProcessEnv = process.env): string {
   if (isHostedPractice(env) && validateHostedPracticeEnvironment(env).version === 2) {
@@ -21,7 +22,7 @@ export function getPool(): Pool {
       throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     }
 
-    pool = new Pool({
+    const next = new Pool({
       host: process.env.DB_HOST,
       port: Number(process.env.DB_PORT) || 5432,
       database: process.env.DB_NAME,
@@ -32,6 +33,8 @@ export function getPool(): Pool {
       connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 5000),
       statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 15000),
     });
+    if (isHostedPractice() && validateHostedPracticeEnvironment().version === 2) initializeSupabasePool(next);
+    pool = next;
   }
   return pool;
 }

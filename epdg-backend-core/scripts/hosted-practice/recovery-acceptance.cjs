@@ -5,6 +5,7 @@ const {Client}=require('pg');
 const profile=require('../../src/hosted-practice/supabase-profile.json');
 const {environment}=require('./bootstrap-supabase.cjs');
 const {supabaseDatabaseConnection}=require('../../dist/hosted-practice/profile.js');
+const {initializeSupabaseSession}=require('../../dist/db/supabase-session.js');
 const email='learner-a@epdg.invalid',cookieName='__Host-epdg_session';
 const paths=new Set(['/api/auth/login','/api/auth/session','/api/auth/logout','/api/auth/forgot-password','/api/auth/reset-password','/api/auth/change-password']);
 const hash=value=>crypto.createHash('sha256').update(value).digest('hex');
@@ -93,7 +94,8 @@ async function acceptRecovery({env=process.env,ClientCtor=Client,requestJson:req
    ssl:{ca:secrets.ca,rejectUnauthorized:true,servername:endpoint.host},
    options:'-c search_path=pg_catalog,epdg,pg_temp -c default_transaction_read_only=on',connectionTimeoutMillis:10000,statement_timeout:10000});
   db.on?.('error',()=>{databaseFailed=true;});
-  await db.connect();stage='database_identity';
+  await db.connect();stage='database_session';need(!databaseFailed);
+  await initializeSupabaseSession(db,{readOnly:true,statementTimeoutMs:10000});need(!databaseFailed);stage='database_identity';
   const rows=await read(`SELECT /* recovery-acceptance:identity */ current_database() AS db,current_user AS role,inet_server_port() AS port,
    (SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()) AS tls,current_setting('default_transaction_read_only') AS read_only,
    h.instance_id::text,h.project_id::text,h.environment_id::text,h.service_id::text,h.supabase_project_ref,h.supabase_organization_id,

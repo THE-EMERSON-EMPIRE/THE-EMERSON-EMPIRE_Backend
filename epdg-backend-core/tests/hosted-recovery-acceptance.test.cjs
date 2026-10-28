@@ -69,6 +69,8 @@ function harness(options={}){
   async end(){state.ended++;if(options.endError)throw new Error(options.endError);}
   async query(sql,values=[]){
    state.queries.push({sql,values});
+   if(['SET SESSION search_path TO pg_catalog,epdg,pg_temp','SET SESSION default_transaction_read_only TO on','SET SESSION statement_timeout TO 10000'].includes(sql))return {rows:[]};
+   if(sql.startsWith("SELECT current_setting('search_path')"))return {rows:[{search_path:'pg_catalog,epdg,pg_temp',read_only:'on',statement_timeout:'10s'}]};
    const stripped=sql.replace(/\/\*[\s\S]*?\*\//g,'').replace(/^\s*--.*$/gm,'').trim();
    assert.ok(/^SELECT\b/i.test(stripped),'Operator must issue SELECT only');
    assert.ok(!/\b(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|SET)\b/i.test(stripped),'No SQL mutation or settings statement');

@@ -11,6 +11,7 @@ const {normalizeHostedPracticeCa}=require('../../dist/hosted-practice/tls.js');
 const {checkSupabaseIdentity}=require('../../dist/hosted-practice/supabase-readiness.js');
 const {checkHostedAccessContract}=require('../../dist/hosted-practice/readiness.js');
 const {supabaseDatabaseConnection}=require('../../dist/hosted-practice/profile.js');
+const {initializeSupabaseSession}=require('../../dist/db/supabase-session.js');
 const {seed}=require('./supabase-seed.cjs');
 const learningPolicy=require('../local-synthetic/learning-migration-policy.cjs');
 const originalLearning=require('../../src/learning/schema-manifest.json');
@@ -98,6 +99,7 @@ async function performBootstrap({ClientCtor=Client,env=process.env},mark){
   options:'-c search_path=pg_catalog,epdg,pg_temp',connectionTimeoutMillis:10000,statement_timeout:30000});
  mark('construct_client');const db=observed(new ClientCtor(connection(secrets.adminPassword)));mark('connect');await db.connect();let added=false;
  try{
+  mark('operator_session');await initializeSupabaseSession(db,{statementTimeoutMs:30000});
   mark('begin');await db.query('BEGIN');mark('advisory_lock');await db.query("SELECT pg_advisory_xact_lock(hashtextextended('epdg-supabase-synthetic-bootstrap-v1',0))");
   mark('operator_identity');
   const {rows:[identity]}=await db.query(`SELECT current_database() AS db,current_user AS role,inet_server_port() AS port,
@@ -140,6 +142,7 @@ async function performBootstrap({ClientCtor=Client,env=process.env},mark){
   mark('commit');await db.query('COMMIT');
   mark('runtime_construct');const runtime=observed(new ClientCtor({...connection(secrets.appPassword),user:profile.databaseLoginUser}));mark('runtime_connect');await runtime.connect();
   try{
+   mark('runtime_session');await initializeSupabaseSession(runtime);
    mark('runtime_identity');await checkSupabaseIdentity(runtime,profile);mark('runtime_contract');await checkHostedAccessContract(runtime,profile);
    mark('fixture_credentials');
    const users=(await runtime.query('SELECT email,name,password FROM core.users ORDER BY email')).rows;

@@ -38,6 +38,11 @@ requires that fresh opaque session's hash in the selected database. An API still
 using the old Railway database fails this proof before requesting recovery.
 Private capture reads are bounded, marker-based and limited to the fixed learner.
 
+After connecting, the helper explicitly sets and verifies the fixed search path,
+read-only mode and statement timeout before reading data. A session pooler may
+ignore connection startup options. These fixed session settings perform no
+schema or record mutation; every subsequent data query is SELECT-only.
+
 Success requires the generic response, exactly one fresh capture, exact approved
 frontend reset link, twenty-minute HTML notice and token lifetime, valid reset,
 old-session revocation, reused-token rejection and new-password sign-in. The

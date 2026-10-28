@@ -33,6 +33,11 @@ function safe(error){
 const poisoned=code=>Object.assign(new Error(privateSentinel),{code,detail:privateSentinel,query:privateSentinel,
  params:[privateSentinel],stack:privateSentinel,cause:new Error(privateSentinel),
  phase:privateSentinel,gate:privateSentinel,variable:privateSentinel,check:privateSentinel});
+function sessionQuery(sql){
+ if(['SET SESSION search_path TO pg_catalog,epdg,pg_temp','SET SESSION default_transaction_read_only TO off','SET SESSION statement_timeout TO 30000'].includes(sql))return {rows:[]};
+ if(sql.startsWith("SELECT current_setting('search_path')"))return {rows:[{search_path:'pg_catalog,epdg,pg_temp',read_only:'off',statement_timeout:'30s'}]};
+ return null;
+}
 async function failure(options){
  let caught;
  try{await bootstrap(options);}catch(error){caught=error;}
@@ -95,7 +100,7 @@ test('connection failures preserve the original error while reporting only the f
 
 test('transaction startup failures retain their error and report begin without SQL or parameters',async()=>{
  const original=poisoned('42501'),queries=[];
- class BrokenBegin{async connect(){}async query(sql){queries.push(sql);if(sql==='BEGIN')throw original;return {rows:[]};}async end(){}}
+ class BrokenBegin{async connect(){}async query(sql){const setup=sessionQuery(sql);if(setup)return setup;queries.push(sql);if(sql==='BEGIN')throw original;return {rows:[]};}async end(){}}
  const caught=await failure({env:environment(),ClientCtor:BrokenBegin});assert.equal(caught,original);
  const result=safe(caught);assert.equal(result.phase,'begin');assert.equal(result.code,'42501');
  assert.equal(queries[0],'BEGIN');assert.ok(queries.every(sql=>sql==='BEGIN'||sql==='ROLLBACK'));
@@ -113,6 +118,7 @@ test('idle client error events are captured privately and prohibit further opera
    async query(sql){
     this.queries.push(sql);
     if(location==='operator_query'){assert.equal(this.listenerCount('error'),1);this.emit('error',original);return {rows:[]};}
+    const setup=sessionQuery(sql);if(setup)return setup;
     if(sql==='BEGIN'||sql==='COMMIT'||sql==='ROLLBACK'||sql.includes('pg_advisory_xact_lock'))return {rows:[]};
     if(sql.startsWith('SELECT current_database()'))return {rows:[{db:'postgres',role:'postgres',port:5432,tls:true,
      rolsuper:false,rolcreaterole:true,rolbypassrls:true}]};
@@ -128,15 +134,16 @@ test('idle client error events are captured privately and prohibit further opera
   }
   const error=await failure({env:environment(),ClientCtor:IdleFailure});assert.equal(error,original);
   const result=safe(error);assert.equal(result.code,'ECONNRESET');
-  assert.equal(result.phase,location==='operator_connect'?'connect':location==='operator_query'?'begin':'runtime_connect');
+  assert.equal(result.phase,location==='operator_connect'?'connect':location==='operator_query'?'operator_session':'runtime_connect');
   if(location==='operator_connect')assert.equal(clients[0].queries.length,0);
-  else if(location==='operator_query')assert.deepEqual(clients[0].queries,['BEGIN']);
+  else if(location==='operator_query')assert.deepEqual(clients[0].queries,['SET SESSION search_path TO pg_catalog,epdg,pg_temp']);
   else{assert.equal(clients.length,2);assert.equal(clients[1].queries.length,0);}
  }
 });
 
 test('operator identity rejection reports a fixed check without leaking assertion actual or expected rows',async()=>{
  class WrongOperator{async connect(){}async query(sql){
+  const setup=sessionQuery(sql);if(setup)return setup;
   if(sql.startsWith('SELECT current_database()'))return {rows:[{db:privateSentinel,role:privateSentinel,port:5432,tls:false,
    rolsuper:false,rolcreaterole:true,rolbypassrls:true}]};
   if(sql==='BEGIN'||sql==='ROLLBACK'||sql.includes('pg_advisory_xact_lock'))return {rows:[]};
