@@ -1,14 +1,10 @@
-import { Resend } from 'resend';
+import { deliverEmail } from '../utils/mailDelivery';
 import { getPool } from '../db';
 import { parseCvFromUrl } from '../utils/cvParser';
 import { logger } from '../utils/logger';
 import { requireEnvironmentVariable } from '../config/env';
 import { escapeHtml, sanitizeEmailSubject } from '../utils/emailSafety';
 
-function getResend() {
-  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY not set');
-  return new Resend(process.env.RESEND_API_KEY);
-}
 const FROM = () => requireEnvironmentVariable('SMTP_FROM');
 const FRONTEND = () => requireEnvironmentVariable('FRONTEND_URL').replace(/\/$/, '');
 
@@ -35,7 +31,7 @@ async function sendMail(to: string | string[], subject: string, bodyHtml: string
       </table>
     </body></html>
   `;
-  const { error } = await getResend().emails.send({
+  const { error } = await deliverEmail({
     from: FROM(),
     to,
     subject: sanitizeEmailSubject(subject),

@@ -295,6 +295,289 @@ strict TLS, `SELECT 1`, readiness, CORS, authentication, cleanup, and
 privacy-safe log checks. No database rollback or migration compensation is
 required for the documentation reconciliation.
 
+## 2026-10-27 — Disabled hosted synthetic application source candidate
+
+Prepared the hosted application and explicit operator bootstrap source atop the
+sealed-listener commit `04da9f7ad5e8c70673e04a9125370457491529cb`. The candidate
+carries the prior cookie-session, recovery, scoped learning, submissions, private
+attachments, mentor feedback, revisions and CRM handoff dependencies as focused
+new modules and forward migration files. Existing authorship/history and the
+schema baseline are preserved. Owner/admin, registration, invitations and role
+management remain closed; no real HR records or operational credentials belong
+in this source or synthetic database.
+
+The dedicated hosted entry requires strict CA and hostname verification,
+NOBYPASSRLS readiness, exact reviewed provider/database/origin pins and private
+runtime access. The source profile remains disabled, with the backend origin
+unassigned. Verified frontend/CRM source pins are present, including the exact
+hosted-practice preview. These pins do not activate the bridge. Normal startup
+cannot run migrations; the separate bootstrap job requires its own credentials,
+an empty recognized database and reviewed immutable source hashes.
+
+At `2026-10-27T14:16:36.188Z`, the isolated checkout's pinned Node 22.23.1/npm
+11.17.0 deterministic root/core installs, build, **139 core tests**, **nine root
+tests** and lint passed. Lint had zero errors and 161 existing warnings. Tests
+use synthetic fixtures, mocked database results and temporary loopback servers.
+The original working checkout was not changed. Source-only verification receipts
+are kept outside this public repository in workspace evidence; no private test
+state, credential, key, capture content, compiled artifact or evidence file is
+included in the candidate.
+
+The checksum-frozen baseline remains SHA-256
+`263b273cd4d636bab100f1fac61b00d8cb88c99753182cd4cce19d524ad6b30f`.
+Its existing trailing blank line is retained as a cosmetic diff-check exception;
+all other candidate whitespace checks pass. Explicit LF attributes preserve the
+baseline and new migration checksums across platform checkouts. No migration
+checksum was changed to accommodate formatting.
+
+Commit, push, hosted bootstrap, deployed TLS, authenticated hosted CRM delivery,
+same-origin proxy/browser acceptance and production publication remain separate
+review/release steps. This source candidate performs none of them. Containment
+keeps the profile/bridge off or stops the owned app service while preserving
+identity, decisions, nonces, submissions and feedback. Any database correction
+must be reviewed and forward-only; do not rewrite applied history or delete
+learning evidence.
+
+## 2026-10-27 — Pin authorized hosted synthetic HTTPS origins
+
+Enabled the reviewed hosted synthetic source profile after explicit authorization
+for its public HTTPS endpoint and private runtime credential destinations. The
+backend audience is the provider-verified
+`https://epdg-practice-api-synthetic-hosted.up.railway.app` origin. Recovery links
+use `https://hosted-practice--epdg.netlify.app` for acceptance testing; the exact
+production frontend remains an allowed origin but is not the current recovery
+destination. The CRM origin remains `https://emerson-crm.netlify.app`.
+
+All provider IDs, database identity/role, instance, baseline/isolation hashes and
+operator bootstrap service pin are unchanged. The preferred login alias still
+resolves only to the existing fictional learner B account; database identities
+and recovery-mail recipients remain `.invalid`. Owner/admin, registration,
+invitations and role-management controls remain closed.
+
+At `2026-10-27T18:25:57.184Z`, the pinned Node 22.23.1/npm 11.17.0 toolchain
+passed build, **139 core tests**, **nine root tests** and lint with zero errors
+and 161 existing warnings in the isolated release checkout. The source change
+contains no credentials, private key, real record or runtime state. The original
+working source remains unchanged. Automation-assisted configuration and
+verification used the connected repository account's verified commit identity.
+
+This source change does not apply database schema, inject credentials or deploy
+the API. Runtime access still requires exact configuration, strict CA/hostname
+verification, the reviewed isolated schema and current readiness checks. Hosted
+bootstrap, actual API deployment and end-to-end acceptance remain separately
+verified operations. Production recovery-link promotion follows acceptance.
+Containment disables the source profile/bridge or stops the owned service while
+retaining decisions, nonces and immutable learning evidence; never reverse the
+applied migration history or delete retained work.
+
+## 2026-10-28 — Close compressed JSON crash path and isolate API image build
+
+Reachability triage of the exact hosted entry reproduced 19 vulnerable package
+entries in the locked install. One request-path blocker was identified in
+body-parser 1.20.5: compressed JSON was accepted before authentication on the
+hosted API. Applied the maintainer's documented `inflate: false` workaround to
+that JSON parser. The raw HMAC receiver's existing no-inflation guard is
+unchanged. No dependency version, lockfile, schema, profile pin or privilege
+policy changed. The inventory count remains unchanged; this is a call-path
+mitigation, not a clean audit claim.
+
+A disposable child-process regression rejects compressed frames and trailing
+bytes with 415, confirms ordinary JSON still reaches its field validation, waits
+for delayed decoder failures, checks health remains available and requires a
+clean child exit. It installs no uncaught-exception handler. Readiness, shutdown
+and forced cleanup are bounded. At `2026-10-28T14:02:25.117Z`, build, **140 core
+tests**, **nine root tests** and lint passed with zero errors and 161 existing
+warnings using Node 22.23.1/npm 11.17.0. The staged parser/test/image delta was
+independently reviewed.
+
+Added the named API-only multi-stage `Dockerfile.hosted-practice` and its
+specific default-deny build-context ignore file. Both stages use the verified
+official Node 22.23.1 bookworm-slim manifest and explicitly install/assert npm
+11.17.0. The build uses normal deterministic install/compilation; runtime uses
+the locked production dependencies, compiled assets, non-root `node` user and
+dedicated hosted command. It includes no Chromium/snapd installation, build
+credential arguments or private environment/key copies. Its build context must
+be `epdg-backend-core`. The operator bootstrap remains a separate source job.
+
+No Docker/Podman engine was available locally. Public official image/npm
+metadata, source instructions and compiled asset requirements were checked;
+no successful container build, provider rollout or runtime image acceptance is
+claimed. The deployment owner must build/select this Dockerfile and verify the
+exact image, toolchain and fixed API before production release. Existing
+privileged controls remain closed. Containment stops the owned API or keeps its
+bridge disabled while retaining all synthetic decisions and learning evidence.
+
+## 2026-10-28 — Disabled Supabase synthetic provider candidate
+
+Prepared a separate candidate atop the verified `e854401` Railway baseline for
+the newly approved `epdg-portal-synthetic` project. The working Railway profile,
+operator bootstrap and original security/learning/hosted SQL remain unchanged.
+The new Supabase profile is disabled and selects the verified session pooler on
+5432; unknown/mixed providers, unreviewed pooler endpoints, operator/API keys
+and TLS downgrades fail closed. Login routing retains the base SQL principal
+while using the exact project-suffixed login. The API
+continues using opaque portal auth with owner/admin controls closed.
+
+Eleven official-CLI-created, checksum-pinned migrations contain only the seven
+new application schemas: 33 RLS tables, 52 policies and 22 triggers. No managed
+schema, database ACL or global default privilege changes are included. The
+fresh-only operator path creates a dedicated role and four `.invalid` fictional
+fixtures; repeat verification preserves all rows and credentials. The runtime
+audits exact grants, effective service/browser-role privileges, provider marker,
+ledger, synthetic identities, ownership and strict TLS. Inherited PUBLIC TEMP
+is explicitly documented and guarded with qualified relations and a pinned
+catalog-first/temp-last search path. No service-role route or Supabase Auth is
+introduced.
+
+In the isolated candidate, deterministic installation, build, **146 core tests**
+(140 existing plus six provider regressions), **nine root tests** and lint
+passed with zero errors and 161 existing warnings using Node 22.23.1/npm
+11.17.0. Independent source review identified and corrected three issues before
+acceptance: managed-default snapshot scope, omitted Supabase role grant drift,
+and incomplete source-marker binding. Actual PostgreSQL 17 rehearsal also
+identified catalog evaluation-order hazards and an omitted unknown-namespace
+boundary; guarded capability queries and exact namespace checks address those
+findings. Independent PostgreSQL 17.11 rehearsal passed a clean fresh install,
+two repeats preserving rows/passwords, 44 isolation/drift/TLS cases, eleven
+preconnect rejections, changed-fixture-password refusal and explicit object
+revocation under deliberately hostile global defaults. Managed catalog and
+exact DDL bytes were preserved. The local session-route adapter is not a hosted
+Supavisor emulator: actual login mapping, startup options, GUC forwarding,
+network/credential and provider image acceptance remain pending. No database
+switch or successful Supabase deployment is claimed by this source entry.
+See `docs/SUPABASE_SYNTHETIC_PROVIDER.md` for operator scope and containment.
+
+The dedicated root-context `Dockerfile.supabase-operator` uses the verified
+official Node 22.23.1 image digest, asserts npm 11.17.0 in both stages and runs
+as non-root `node`. Its default-deny context and explicit final copies include
+only required compiled/source metadata, operator scripts, fictional fixtures
+and the eleven reviewed SQL files. It installs no Chromium and copies no
+runtime credentials. A provider image build remains required because no local
+Docker engine is available.
+
+Two final default parallel runs encountered the existing compression test's
+five-second cold-child startup deadline while the other 145 tests passed. The
+isolated compression test passed in 3.485 seconds; this was a harness scheduling
+issue, with no runtime compression failure observed. The harness now waits up
+to 20 seconds for the actual listening signal plus an initial successful
+health request, with a separate bounded overall budget. Request limits,
+compressed/trailing-payload assertions, child-crash detection and final cleanup
+remain unchanged. The default npm test command and all tests remain enabled.
+The final default command then passed all 146 tests with zero failures/skips;
+the bounded-concurrency diagnostic also passed every test. No runtime behavior,
+dependency, lockfile or CI command was changed by the harness correction.
+
+## 2026-10-28 — Backend GitHub verification workflow
+
+Added a separate credential-free CI workflow for pull requests, manual runs and
+pushes to main or the Supabase candidate branch. It has read-only repository
+permissions, disables checkout credential persistence and uses verified official
+checkout v7.0.1/setup-node v7.1.0 commit pins. Both jobs install/assert Node
+22.23.1/npm 11.17.0 and use deterministic npm ci. Foundation runs its nine
+security tests; core runs the unchanged default npm test command (build plus
+146 tests) and lint. No runtime secret, database service, migration or deploy
+step is configured, and dependency/script policies remain unchanged.
+
+Workflow YAML and the complete two-file change were reviewed before publishing.
+The application/profile/SQL/Docker source remains identical to b682f18. Actual
+GitHub job results must match the new workflow commit before being counted as
+CI acceptance; this entry does not claim a provider build or deployment. Any
+staged operator source pin must be updated deliberately to the chosen commit.
+
+## 2026-10-28 — Complete the durable ownership readiness boundary
+
+The new read-only GitHub workflow completed successfully at 951c6c8 in run
+40722653368: nine foundation tests, 146 core tests/build and lint passed on the
+pinned toolchain. That run covers the CI-only commit before this separate
+runtime correction; a later source head requires its own workflow result.
+
+Independent targeted QA then reproduced two readiness gaps: assigning the app
+role ownership of a managed invoker function or enum was accepted. The Supabase
+gate now uses PostgreSQL's shared ownership-dependency catalog to reject durable
+ownership across object classes, including managed functions/types, default ACLs,
+publications and shared/other-database objects. Only objects resolving to actual
+PostgreSQL temporary namespaces are excepted; a schema-name prefix cannot bypass
+the gate. No role, grant, schema, migration, profile, Docker or CI configuration
+is changed by this correction.
+
+The predicate passed six actual PG17 cases, including temporary table/type
+preservation and durable function/enum/default-ACL/publication rejection. The
+complete compiled-source rehearsal passed 46/46 isolation/drift/TLS cases with
+valid no-drift controls, preserving managed catalog/DDL and app/password bytes.
+Source closure: 7cb412e3b4e99d7b23ab4e23fb98d2272fdfbe899ec7d5623f7e549427bee244.
+The current local default build/test command passed all 146 tests with no skips;
+lint passed with zero errors and the same 161 existing warnings. The bounded
+four-file diff was independently reviewed before its separate publication.
+The provider profile remains disabled. Hosted credentials, Supavisor semantics,
+operator image execution and deployment acceptance remain separate gates.
+
+## 2026-10-28 — Private synthetic recovery acceptance operator
+
+Added an explicit opt-in operator script for learner-a@epdg.invalid recovery.
+The default bootstrap command, API code, source profile, SQL, role grants and
+the preferred learner B alias are unchanged. The operator image copies only
+the additional reviewed script and retains its default bootstrap entrypoint.
+
+The helper validates the existing operator project/environment/service and
+Supabase route, verifies strict database TLS, immutable instance/hash binding
+and read-only startup mode, then proves a newly issued API session hash exists
+in that selected database before requesting recovery. All operator queries are
+SELECT-only and scoped capture/session/token reads use the fixed fictional
+learner. An old Railway target or mismatched database fails before reset.
+
+Normal HTTPS portal requests include the approved Origin, portal request header,
+real opaque cookie and server-returned CSRF token for authenticated mutations.
+The check requires a generic recovery response, exactly one new private capture,
+an exact approved-origin reset link with the 20-minute notice and matching token
+expiry, old-session revocation, one-use token rejection and temporary-password
+login. It restores the fixture through normal change-password, verifies restored
+sign-in and revocation, and logs out test sessions. Finally cleanup attempts the
+same API restoration after an ambiguous or failed reset; incomplete restoration
+is a failing result. Passwords, HTML, cookies, CSRF and recovery tokens stay in
+process, with only fixed-stage/boolean results emitted. No SMTP or handoff key
+is used, and no private recovery link is sent to a browser or chat.
+
+Fourteen injected-IO regressions cover preconnect refusal, database-target
+binding, capture/link/expiry scope, session/replay behavior, normal restoration,
+ambiguous-reset cleanup, restoration failure and secret-free error summaries.
+The current source has not executed this acceptance against a hosted API. The
+operator must remain opt-in and run only after the API is retargeted and passes
+strict readiness; hosted recovery, image and release acceptance are still pending.
+
+## 2026-10-28 — Private operator failure diagnostics
+
+The first hosted Supabase operator image fetched the reviewed 25de51e source
+and built with the pinned toolchain, then stopped in the generic bootstrap
+failure handler. The provider catalog check afterward showed no application
+schemas or application role and the unchanged managed schema ACL fingerprint.
+This establishes a safe failed attempt; it does not establish the cause or
+imply that the privately entered credential was incorrect. The API remains
+on the prior healthy Railway database release while this is investigated.
+
+The operator now emits one privacy-safe JSON failure result with a source-defined
+phase and a finite approved SQLSTATE, network or TLS code, or UNCLASSIFIED.
+Environment failures may identify a known variable name or fixed check name;
+they never include its value or credential length. No raw message, detail,
+query, parameters, assertion actual/expected rows, stack or cause is logged.
+Private idle pg-client error listeners also stop further work through the same
+handler instead of allowing Node to print an unhandled error. Existing provider,
+TLS, operator identity, role, SQL, preservation and runtime gates remain intact.
+The source profile and migration bytes are unchanged. Retry requires review of
+the new safe phase/code result; unchanged blind retries are not acceptance.
+
+Injected-client and actual CLI regressions cover finite-code redaction, forged
+metadata, environment refusal before connection, connect/transaction/identity
+failure phases and idle error handling. This source preparation changes no
+provider configuration, credentials or database objects and claims no successful
+hosted bootstrap, recovery check or production publication.
+
+The complete default core build/test command passed 168/168 with no skips;
+root tests passed 9/9 and lint passed with zero errors and the existing 161
+warnings. Initial sandbox-only root HTTP tests failed to fetch their ephemeral
+loopback server, and that restricted core attempt was stopped. The unchanged
+default commands passed with loopback networking permitted. The failure was an
+execution restriction, not evidence of an application change or hosted fault.
+
 ## 2026-10-28 — Canonical synthetic website intake source
 
 Added the independently reviewed website-intake handoff in a separate branch from canonical main `7bfdb114363147ec2998d151dff22a786b2122ba`. All eight delivered files match the frozen producer manifest by exact bytes and SHA-256. Canonical main had no Supabase config or Edge function directory, so the supplied new function stanza becomes the new config without replacing any legacy configuration or function. Its existing `20260708_api_foundation_review.sql` remains unchanged. The branch adds only `website-intake-synthetic`, the single `20261028153644_website_intake_synthetic_bridge.sql` migration, and this journal update. The separate EPDG eleven-migration bundle is absent.
@@ -312,3 +595,60 @@ The coordinated two-file follow-up fixes the earlier capture-error visibility li
 Native Deno `2.8.1` passed all four tests with network, environment, read, write and subprocess runtime permissions denied, plus lint, frozen checks and formatting. Earlier root/core checks remain historical evidence; the unchanged API entrypoints were not rerun for this focused handler/test correction. Only the handler, its regression test and this journal change. Protocol, runtime configuration, migration and CRM source remain unchanged; the existing foundation-review migration is preserved and the EPDG eleven-migration bundle is absent.
 
 The correction updates the existing draft PR #6 branch. No deployment, database operation, runtime secret change, source merge, real record import or mail delivery occurred. Hosted acceptance remains separate. A focused forward correction or revert of this handler change can compensate without changing stored receipts or legacy workflows.
+
+## 2026-10-28 — Canonical source integration and verified Supabase sessions
+
+Merged canonical main `7a68f1acca420d82c7d1799cf0b5e9f37a343cc4` into
+the portal branch through ordinary merge `893ae83920e40ce5bd5b91a084b814294598ef95`.
+Both journal histories are retained. The eight intake files match canonical main
+and every one of the eleven EPDG migration hashes is unchanged. Intake source
+coexistence does not authorize applying its migration to the portal database;
+the operator continues to select only its explicit eleven-file manifest. No
+unfiltered Supabase push or migration discovery is part of this release.
+
+The corrected private operator attempt created the fresh seven application
+schemas, 33 RLS tables and four fictional accounts, preserving the exact managed
+schema ACL pin and identity markers, then rejected runtime readiness. Read-only
+provider evidence identified PUBLIC SELECT on two managed statistics views
+whose schema grants the app no USAGE. The managed table/column/sequence/definer
+checks now require schema USAGE and object privilege together. Raw browser ACL
+checks, ownership, unknown namespaces, CASE type guards and catalog pins remain
+strict. Fresh actual PG17 sessions passed 15 access regressions: hidden grants
+remain inaccessible, adding USAGE makes readiness fail, and restored fresh
+sessions pass. Revoking USAGE is not claimed to remediate previously resolved
+statements in existing sessions.
+
+An actual restricted-app TLS session showed that Supavisor ignored connection
+startup options. Explicit session settings passed the unchanged identity and
+full access contract. Runtime pool checkout now awaits fixed search-path,
+read/write-mode and statement-timeout SETs plus strict readback before exposing
+a client. Promise and callback checkout, including Pool.query, share the gate;
+reused clients are checked again, and failed setup destroys the checkout with a
+fixed privacy-safe 503. Bootstrap operator/runtime clients use the same setup;
+the recovery operator explicitly selects read-only mode before its SELECT-only
+data reads. No schema, role, ACL, fixture, credential or provider pin changes
+are made by this session configuration.
+
+The combined default core build/test command passed 176/176, root tests 9/9,
+and lint zero errors with the same 161 warnings. The eight new session tests
+cover startup-option loss, deferred promise/callback exposure, Pool.query,
+reuse, destruction and redacted acquire/cleanup failures. Native Deno 2.8.1
+passed all four intake tests with network/environment/filesystem/subprocess
+permissions denied, frozen checks, lint and formatting. Windows checkout CRLF
+caused the initial format-only failure; exact canonical Git blobs passed in an
+isolated evidence directory without changing source bytes. The source profile
+remains disabled. Hosted operator repeat, API retargeting, recovery, CRM
+roundtrip and production publication remain separate acceptance gates.
+
+## 2026-10-28 — Native intake checks in backend CI
+
+Added a separate native Deno job to the existing read-only backend workflow.
+Official denoland/setup-deno v2 is pinned to verified commit
+`22d081ff2d3a40755e97629de92e3bcbfa7cf2ed`; the runtime is pinned to Deno
+2.8.1 and checked explicitly. The job runs the four native tests with network,
+environment, filesystem and subprocess permissions denied, frozen type checks,
+lint and formatting. Checkout does not persist credentials. Existing root and
+core jobs and toolchain policies are unchanged. The workflow adds no database,
+service, runtime credential, migration or deployment step. Source, SQL, profile
+and provider configuration are unchanged by this separate CI commit. Its actual
+current-head result must pass before the next operator release is accepted.

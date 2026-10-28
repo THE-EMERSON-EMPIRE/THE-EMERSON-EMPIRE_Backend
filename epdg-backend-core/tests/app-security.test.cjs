@@ -89,14 +89,18 @@ test('protected route namespaces reject unauthenticated requests with 401', asyn
     '/api/intern/leaderboard',
     '/api/intern/career-file',
     '/api/mentor/stats',
+    '/api/mentor/reviews',
+    '/api/mentor/reviews/30000000-0000-4000-8000-000000000004',
     '/api/users',
+    '/api/learner/assignments/30000000-0000-4000-8000-000000000004/submission',
+    '/api/learner/assignments/30000000-0000-4000-8000-000000000004/feedback',
   ]) {
     const response = await fetch(`${baseUrl}${path}`);
     assert.equal(response.status, 401, path);
   }
 });
 
-test('public registration cannot create administrator accounts', async () => {
+test('public administrator registration stays closed during the session cutover', async () => {
   const response = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -107,12 +111,12 @@ test('public registration cannot create administrator accounts', async () => {
       role: 'admin',
     }),
   });
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 503);
   const body = await response.json();
   assert.equal(body.success, false);
 });
 
-test('school registration rejects non-lowercase school types before database access', async () => {
+test('public school registration remains closed before database access', async () => {
   const response = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -125,18 +129,15 @@ test('school registration rejects non-lowercase school types before database acc
     }),
   });
 
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), {
     success: false,
-    message: 'Validation failed',
-    errors: [{
-      field: 'school_type',
-      message: 'School type must be university, college, polytechnic, or tvet',
-    }],
+    message: 'Internal server error',
+    errors: [],
   });
 });
 
-test('validation responses never echo password values', async () => {
+test('closed registration responses never echo password values', async () => {
   const password = 'p@ss';
   const response = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
@@ -148,10 +149,22 @@ test('validation responses never echo password values', async () => {
       role: 'intern',
     }),
   });
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 503);
   const body = await response.json();
   assert.equal(JSON.stringify(body).includes(password), false);
   assert.equal(JSON.stringify(body).includes('value'), false);
+});
+
+test('malformed JSON errors never reflect submitted credentials', async () => {
+  const submitted = 'malformed-json-credential-fixture';
+  const response = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: `{"password":"${submitted}",`,
+  });
+  assert.equal(response.status, 400);
+  const result = await response.json();
+  assert.equal(result.message, 'Invalid JSON body');
+  assert.equal(JSON.stringify(result).includes(submitted), false);
 });
 
 test('auth controllers classify unexpected failures as sanitized 5xx responses', () => {

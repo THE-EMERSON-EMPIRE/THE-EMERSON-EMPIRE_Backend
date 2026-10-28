@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { Resend } from 'resend';
+import { deliverEmail } from '../utils/mailDelivery';
 import type { PoolClient } from 'pg';
 import { getPool } from '../db';
 import { logger } from '../utils/logger';
@@ -14,10 +14,6 @@ function generateTempPassword(): string {
   return Array.from(bytes).map((b) => chars[b % chars.length]).join('');
 }
 
-function getResend() {
-  if (!process.env.RESEND_API_KEY) throw new Error('RESEND_API_KEY not set');
-  return new Resend(process.env.RESEND_API_KEY);
-}
 
 const FROM = () => requireEnvironmentVariable('SMTP_FROM');
 const FRONTEND = () => requireEnvironmentVariable('FRONTEND_URL').replace(/\/$/, '');
@@ -1466,7 +1462,7 @@ export class AdminService {
         </table>
       </body></html>
     `;
-    const { error } = await getResend().emails.send({
+    const { error } = await deliverEmail({
       from: FROM(),
       to,
       subject: sanitizeEmailSubject(subject),

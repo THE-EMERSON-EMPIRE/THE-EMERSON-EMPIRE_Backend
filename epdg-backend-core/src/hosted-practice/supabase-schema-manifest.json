@@ -1,0 +1,97 @@
+{
+  "version": "2026-10-28-supabase-synthetic-v1",
+  "baseline": {
+    "upstreamSha256": "263b273cd4d636bab100f1fac61b00d8cb88c99753182cd4cce19d524ad6b30f",
+    "coreTables": [
+      "core.branches",
+      "core.user_branch_roles",
+      "core.users",
+      "epdg.admins",
+      "epdg.companies",
+      "epdg.intern_profiles",
+      "epdg.schools",
+      "epdg.users"
+    ],
+    "file": "supabase/migrations/20261028151409_epdg_supabase_app_baseline.sql",
+    "sha256": "9a70137fd070aea287754944d931721941236c1ad6c92df6cf43529f5acc3882"
+  },
+  "security": {
+    "version": "2026-10-20-portal-security-v1",
+    "upstreamSha256": "2be5ff9026acdf54ef79fd913a09fc8fffc0b02b080c224b7af680a4ceba1860",
+    "file": "supabase/migrations/20261028151439_epdg_supabase_portal_security.sql",
+    "sha256": "2be5ff9026acdf54ef79fd913a09fc8fffc0b02b080c224b7af680a4ceba1860"
+  },
+  "learning": [
+    {
+      "version": "2026-10-24-synthetic-learning-v1",
+      "upstreamSha256": "db3ab105acccb5e6f82bc3bca1a96eb93d4eb3993d6713f87bf8c374bc71a8fb",
+      "file": "supabase/migrations/20261028151440_epdg_supabase_learning.sql",
+      "sha256": "db3ab105acccb5e6f82bc3bca1a96eb93d4eb3993d6713f87bf8c374bc71a8fb"
+    },
+    {
+      "version": "2026-10-24-synthetic-assignments-v1",
+      "upstreamSha256": "2f781d51154eb64a026c75ea0ef4cfbb265e9e77a6881f0b9d828c0a5f245d21",
+      "file": "supabase/migrations/20261028151442_epdg_supabase_assignment_submissions.sql",
+      "sha256": "2f781d51154eb64a026c75ea0ef4cfbb265e9e77a6881f0b9d828c0a5f245d21"
+    },
+    {
+      "version": "2026-10-24-synthetic-assignment-prompt-lines-v1",
+      "upstreamSha256": "ef724c0ce559585ff70208283558959b9de6ce9bbe9386dd7e113c7c30c37a90",
+      "file": "supabase/migrations/20261028151444_epdg_supabase_assignment_prompt_lines.sql",
+      "sha256": "ef724c0ce559585ff70208283558959b9de6ce9bbe9386dd7e113c7c30c37a90"
+    },
+    {
+      "version": "2026-10-24-synthetic-assignment-attachments-v1",
+      "upstreamSha256": "1a0623618a408181e32e2ffb9c9784ddbd3b0ef7e81bbec32bf92f12eb2f7bdc",
+      "file": "supabase/migrations/20261028151446_epdg_supabase_assignment_attachments.sql",
+      "sha256": "1a0623618a408181e32e2ffb9c9784ddbd3b0ef7e81bbec32bf92f12eb2f7bdc"
+    },
+    {
+      "version": "2026-10-24-synthetic-mentor-review-v1",
+      "upstreamSha256": "1af6773a8c6b1c30c705032fe9d5f656bdd75027a70830a6812c3361004ded1e",
+      "file": "supabase/migrations/20261028151448_epdg_supabase_mentor_review.sql",
+      "sha256": "1af6773a8c6b1c30c705032fe9d5f656bdd75027a70830a6812c3361004ded1e"
+    },
+    {
+      "version": "2026-10-24-synthetic-assignment-revisions-v1",
+      "upstreamSha256": "cfa51624a3c7e8e3b552f12cb5dc6c2a5769fa78fd64258da4e62151f6c92b0b",
+      "file": "supabase/migrations/20261028151449_epdg_supabase_assignment_revisions.sql",
+      "sha256": "cfa51624a3c7e8e3b552f12cb5dc6c2a5769fa78fd64258da4e62151f6c92b0b"
+    },
+    {
+      "version": "2026-10-28-supabase-synthetic-crm-handoff-v1",
+      "upstreamSha256": "2f32810a5956999693d98e3ea9f4ca200da53ae6530da3fb1e08c51ff54a75ca",
+      "file": "supabase/migrations/20261028151451_epdg_supabase_crm_handoff.sql",
+      "sha256": "e0363b8d962232bdd15b162e7c363fd3e66f671e9b51fc637920e68bf301ea65"
+    },
+    {
+      "version": "2026-10-28-supabase-synthetic-handoff-reviewer-provenance-v1",
+      "upstreamSha256": "cb742fc41ce3b915585d779423dbc69ebc26397fe976f598f9d92f0479519d06",
+      "file": "supabase/migrations/20261028151453_epdg_supabase_handoff_reviewer_provenance.sql",
+      "sha256": "08a395bf20141ab97f20de81d1e391769e398137b557566827a13bf023c7db48"
+    }
+  ],
+  "hosted": {
+    "securedTables": 24,
+    "upstreamSha256": "73332255daf743f75d8067620286e77e4c3608dd8931cfd673185b32a66cbff8",
+    "policies": 52,
+    "file": "supabase/migrations/20261028151454_epdg_supabase_hosted_isolation.sql",
+    "sha256": "a95be63f6b9c724210af2fb44f4954c58eb85c63758adac7eff21d4b09c34b58"
+  },
+  "appTables": 33,
+  "appSecuredTables": 33,
+  "appSchemas": [
+    "core",
+    "epdg",
+    "portal_security",
+    "synthetic_learning",
+    "synthetic_handoff",
+    "hosted_practice",
+    "synthetic_meta"
+  ],
+  "migrationTool": {
+    "version": "2.122.0",
+    "source": "https://github.com/supabase/cli/releases/tag/v2.122.0",
+    "windowsArchiveSha256": "60031fd5bf050fc12a0c6aef68997600d143870f944bf13109c7765dca329af8"
+  }
+}

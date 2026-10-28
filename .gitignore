@@ -12,3 +12,6 @@ dist/
 build/
 .vscode/
 .idea/
+.local-synthetic/
+.local-hosted-practice/
+supabase/.temp/
