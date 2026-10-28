@@ -1,5 +1,15 @@
 import { Pool } from 'pg';
 import { getDatabaseSslConfig } from './tls';
+import { isHostedPractice, validateHostedPracticeEnvironment } from '../hosted-practice/profile';
+
+export function databaseSearchPath(env: NodeJS.ProcessEnv = process.env): string {
+  if (isHostedPractice(env) && validateHostedPracticeEnvironment(env).version === 2) {
+    // pg_temp is explicitly last: inherited managed-database TEMP cannot shadow
+    // a qualified app relation or the explicitly first pg_catalog functions.
+    return 'pg_catalog,epdg,pg_temp';
+  }
+  return 'epdg,public';
+}
 
 let pool: Pool | null = null;
 
@@ -18,7 +28,7 @@ export function getPool(): Pool {
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       ssl: getDatabaseSslConfig(),
-      options: '-c search_path=epdg,public',
+      options: `-c search_path=${databaseSearchPath()}`,
       connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 5000),
       statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 15000),
     });

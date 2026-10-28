@@ -9,7 +9,7 @@ function request(port,path,body,encoding){return new Promise((resolve,reject)=>{
  });req.setTimeout(3000,()=>req.destroy(new Error('Unit request timed out')));req.on('error',reject);req.end(body);
 });}
 function deadline(promise,milliseconds,message){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),milliseconds);})]).finally(()=>clearTimeout(timer));}
-test('hosted JSON rejects compressed frames and trailing bytes without a child-process crash', {timeout:15000},async t=>{
+test('hosted JSON rejects compressed frames and trailing bytes without a child-process crash', {timeout:45000},async t=>{
  const env={};for(const name of ['SystemRoot','WINDIR','COMSPEC','PATH','TEMP','TMP','USERPROFILE','APPDATA','LOCALAPPDATA'])if(process.env[name])env[name]=process.env[name];
  const child=fork(join(__dirname,'fixtures/hosted-compression-child.cjs'),[],{env,stdio:['ignore','pipe','pipe','ipc']});
  t.after(()=>{if(child.exitCode===null&&child.signalCode===null)child.kill();});
@@ -18,8 +18,11 @@ test('hosted JSON rejects compressed frames and trailing bytes without a child-p
  let output='';for(const stream of [child.stdout,child.stderr])stream.on('data',value=>{output=(output+value).slice(-8192);});
  const closed=new Promise(resolve=>child.once('close',(code,signal)=>resolve({code,signal})));
  try{
-  const ready=await deadline(Promise.race([new Promise((resolve,reject)=>{child.once('message',resolve);child.once('error',reject);}),closed.then(()=>{throw new Error('Unit child exited before readiness');})]),5000,'Unit child readiness timed out');
-  assert.equal(ready.ready,true);const plain=Buffer.from('{}');
+  // Give cold imports headroom when test workers contend on Windows. Readiness
+  // still requires the actual listening signal and a successful health request;
+  // request, crash-detection and cleanup deadlines remain independently bounded.
+  const ready=await deadline(Promise.race([new Promise((resolve,reject)=>{child.once('message',resolve);child.once('error',reject);}),closed.then(()=>{throw new Error('Unit child exited before readiness');})]),20000,'Unit child readiness timed out');
+  assert.equal(ready.ready,true);assert.equal((await request(ready.port,'/health')).status,200);const plain=Buffer.from('{}');
   for(const [encoding,body]of [['gzip',gzipSync(plain)],['gzip',Buffer.concat([gzipSync(plain),Buffer.from('unit-trailing-bytes')])],
    ['deflate',Buffer.concat([deflateSync(plain),Buffer.from('unit-trailing-bytes')])]]){
    const result=await request(ready.port,'/api/auth/login',body,encoding);assert.equal(result.status,415);

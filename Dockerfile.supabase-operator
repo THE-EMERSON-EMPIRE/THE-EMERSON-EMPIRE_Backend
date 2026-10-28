@@ -1,0 +1,40 @@
+# Build context: repository root. Explicit one-time operator job; never the API.
+FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS build
+WORKDIR /app/epdg-backend-core
+RUN npm install --global npm@11.17.0 \
+    && test "$(node --version)" = "v22.23.1" \
+    && test "$(npm --version)" = "11.17.0"
+COPY epdg-backend-core/package.json epdg-backend-core/package-lock.json ./
+RUN npm ci
+COPY epdg-backend-core/tsconfig.json ./
+COPY epdg-backend-core/scripts/copy-migrations.cjs ./scripts/copy-migrations.cjs
+COPY epdg-backend-core/src ./src
+RUN npm run build
+
+FROM node:22.23.1-bookworm-slim@sha256:6c74791e557ce11fc957704f6d4fe134a7bc8d6f5ca4403205b2966bd488f6b3 AS operator
+ENV NODE_ENV=production
+WORKDIR /app/epdg-backend-core
+RUN npm install --global npm@11.17.0 \
+    && test "$(node --version)" = "v22.23.1" \
+    && test "$(npm --version)" = "11.17.0"
+COPY epdg-backend-core/package.json epdg-backend-core/package-lock.json ./
+RUN npm ci --omit=dev
+COPY --from=build /app/epdg-backend-core/dist ./dist
+COPY epdg-backend-core/src/hosted-practice/supabase-profile.json epdg-backend-core/src/hosted-practice/supabase-schema-manifest.json ./src/hosted-practice/
+COPY epdg-backend-core/src/learning/schema-manifest.json ./src/learning/schema-manifest.json
+COPY epdg-backend-core/scripts/hosted-practice/bootstrap-supabase.cjs epdg-backend-core/scripts/hosted-practice/supabase-seed.cjs ./scripts/hosted-practice/
+COPY epdg-backend-core/scripts/local-synthetic/learning-fixtures.cjs epdg-backend-core/scripts/local-synthetic/handoff-fixtures.cjs epdg-backend-core/scripts/local-synthetic/learning-migration-policy.cjs ./scripts/local-synthetic/
+COPY scripts/hosted-practice/operator-profile.json /app/scripts/hosted-practice/operator-profile.json
+COPY supabase/migrations/20261028151409_epdg_supabase_app_baseline.sql \
+     supabase/migrations/20261028151439_epdg_supabase_portal_security.sql \
+     supabase/migrations/20261028151440_epdg_supabase_learning.sql \
+     supabase/migrations/20261028151442_epdg_supabase_assignment_submissions.sql \
+     supabase/migrations/20261028151444_epdg_supabase_assignment_prompt_lines.sql \
+     supabase/migrations/20261028151446_epdg_supabase_assignment_attachments.sql \
+     supabase/migrations/20261028151448_epdg_supabase_mentor_review.sql \
+     supabase/migrations/20261028151449_epdg_supabase_assignment_revisions.sql \
+     supabase/migrations/20261028151451_epdg_supabase_crm_handoff.sql \
+     supabase/migrations/20261028151453_epdg_supabase_handoff_reviewer_provenance.sql \
+     supabase/migrations/20261028151454_epdg_supabase_hosted_isolation.sql /app/supabase/migrations/
+USER node
+CMD ["node", "scripts/hosted-practice/bootstrap-supabase.cjs"]

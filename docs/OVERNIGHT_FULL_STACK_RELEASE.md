@@ -406,3 +406,63 @@ claimed. The deployment owner must build/select this Dockerfile and verify the
 exact image, toolchain and fixed API before production release. Existing
 privileged controls remain closed. Containment stops the owned API or keeps its
 bridge disabled while retaining all synthetic decisions and learning evidence.
+
+## 2026-10-28 — Disabled Supabase synthetic provider candidate
+
+Prepared a separate candidate atop the verified `e854401` Railway baseline for
+the newly approved `epdg-portal-synthetic` project. The working Railway profile,
+operator bootstrap and original security/learning/hosted SQL remain unchanged.
+The new Supabase profile is disabled and selects the verified session pooler on
+5432; unknown/mixed providers, unreviewed pooler endpoints, operator/API keys
+and TLS downgrades fail closed. Login routing retains the base SQL principal
+while using the exact project-suffixed login. The API
+continues using opaque portal auth with owner/admin controls closed.
+
+Eleven official-CLI-created, checksum-pinned migrations contain only the seven
+new application schemas: 33 RLS tables, 52 policies and 22 triggers. No managed
+schema, database ACL or global default privilege changes are included. The
+fresh-only operator path creates a dedicated role and four `.invalid` fictional
+fixtures; repeat verification preserves all rows and credentials. The runtime
+audits exact grants, effective service/browser-role privileges, provider marker,
+ledger, synthetic identities, ownership and strict TLS. Inherited PUBLIC TEMP
+is explicitly documented and guarded with qualified relations and a pinned
+catalog-first/temp-last search path. No service-role route or Supabase Auth is
+introduced.
+
+In the isolated candidate, deterministic installation, build, **146 core tests**
+(140 existing plus six provider regressions), **nine root tests** and lint
+passed with zero errors and 161 existing warnings using Node 22.23.1/npm
+11.17.0. Independent source review identified and corrected three issues before
+acceptance: managed-default snapshot scope, omitted Supabase role grant drift,
+and incomplete source-marker binding. Actual PostgreSQL 17 rehearsal also
+identified catalog evaluation-order hazards and an omitted unknown-namespace
+boundary; guarded capability queries and exact namespace checks address those
+findings. Independent PostgreSQL 17.11 rehearsal passed a clean fresh install,
+two repeats preserving rows/passwords, 44 isolation/drift/TLS cases, eleven
+preconnect rejections, changed-fixture-password refusal and explicit object
+revocation under deliberately hostile global defaults. Managed catalog and
+exact DDL bytes were preserved. The local session-route adapter is not a hosted
+Supavisor emulator: actual login mapping, startup options, GUC forwarding,
+network/credential and provider image acceptance remain pending. No database
+switch or successful Supabase deployment is claimed by this source entry.
+See `docs/SUPABASE_SYNTHETIC_PROVIDER.md` for operator scope and containment.
+
+The dedicated root-context `Dockerfile.supabase-operator` uses the verified
+official Node 22.23.1 image digest, asserts npm 11.17.0 in both stages and runs
+as non-root `node`. Its default-deny context and explicit final copies include
+only required compiled/source metadata, operator scripts, fictional fixtures
+and the eleven reviewed SQL files. It installs no Chromium and copies no
+runtime credentials. A provider image build remains required because no local
+Docker engine is available.
+
+Two final default parallel runs encountered the existing compression test's
+five-second cold-child startup deadline while the other 145 tests passed. The
+isolated compression test passed in 3.485 seconds; this was a harness scheduling
+issue, with no runtime compression failure observed. The harness now waits up
+to 20 seconds for the actual listening signal plus an initial successful
+health request, with a separate bounded overall budget. Request limits,
+compressed/trailing-payload assertions, child-crash detection and final cleanup
+remain unchanged. The default npm test command and all tests remain enabled.
+The final default command then passed all 146 tests with zero failures/skips;
+the bounded-concurrency diagnostic also passed every test. No runtime behavior,
+dependency, lockfile or CI command was changed by the harness correction.
