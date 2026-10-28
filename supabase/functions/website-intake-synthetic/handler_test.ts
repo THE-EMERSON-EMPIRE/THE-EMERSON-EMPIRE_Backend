@@ -98,6 +98,92 @@ Deno.test('native invalid/non-synthetic payloads and wrong routes never reach st
   assert(calls === 0, 'No storage calls')
 })
 
+Deno.test('capture errors expose only the validated preview CORS and private errors remain unsigned', async () => {
+  let result = 'collision'
+  let captureCalls = 0
+  const handler = createIntakeHandler(config, {
+    capture: () => {
+      captureCalls++
+      return Promise.resolve(result)
+    },
+    exchange: () => Promise.resolve({ error: 'replay' }),
+  })
+  const readable = (response: Response, status: number) => {
+    assert(response.status === status, 'Intended capture error status')
+    assert(
+      response.headers.get('access-control-allow-origin') === origin,
+      'Exact preview can read capture error',
+    )
+    assert(response.headers.get('vary') === 'Origin', 'Origin varies')
+    assert(
+      response.headers.get('cache-control') === 'no-store',
+      'Capture error is not cached',
+    )
+  }
+  readable(
+    await handler(request({ ...sample(), email: 'real@example.com' })),
+    400,
+  )
+  readable(await handler(request(sample())), 409)
+  result = 'rate_limited'
+  readable(await handler(request(sample())), 429)
+  result = 'invalid'
+  readable(await handler(request(sample())), 503)
+  const beforeForeign = captureCalls
+  const foreign = new Request(`${ENDPOINT}/capture`, {
+    method: 'POST',
+    headers: {
+      origin: 'https://foreign.invalid',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(sample()),
+  })
+  const denied = await handler(foreign)
+  assert(
+    denied.status === 403 && captureCalls === beforeForeign,
+    'Foreign origin rejected before storage',
+  )
+  assert(
+    denied.headers.get('access-control-allow-origin') === null,
+    'Foreign origin receives no CORS',
+  )
+  assert(
+    denied.headers.get('x-intake-signature') === null,
+    'Public error remains unsigned',
+  )
+  for (const operation of ['pull', 'ack'] as const) {
+    const unsigned = new Request(`${ENDPOINT}/${operation}`, {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/json' },
+      body: '{}',
+    })
+    const rejected = await handler(unsigned)
+    assert(rejected.status === 401, 'Private request still requires HMAC')
+    assert(
+      rejected.headers.get('access-control-allow-origin') === null,
+      'Unsigned private error receives no CORS',
+    )
+    assert(
+      rejected.headers.get('x-intake-signature') === null,
+      'Private error does not fabricate a signature',
+    )
+    const signed = await signedRequest(
+      operation,
+      operation === 'pull' ? { limit: 20 } : { events: [] },
+      key,
+    )
+    const authenticatedError = await handler(signed)
+    assert(
+      authenticatedError.status === 409,
+      'Private storage refusal remains an error',
+    )
+    assert(
+      authenticatedError.headers.get('access-control-allow-origin') === null,
+      'Authenticated private error receives no CORS',
+    )
+  }
+})
+
 Deno.test('native gateway routes verify the canonical signature and bind response nonce', async () => {
   let calls = 0
   const nonces = new Set<string>()
