@@ -1,0 +1,5 @@
+{
+  "compilerOptions": { "lib": ["deno.ns", "dom", "es2022"] },
+  "lint": { "rules": { "tags": ["recommended"] } },
+  "fmt": { "singleQuote": true, "semiColons": false }
+}
