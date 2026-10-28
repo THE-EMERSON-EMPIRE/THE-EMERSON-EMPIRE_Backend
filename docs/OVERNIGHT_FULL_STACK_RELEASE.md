@@ -466,3 +466,20 @@ remain unchanged. The default npm test command and all tests remain enabled.
 The final default command then passed all 146 tests with zero failures/skips;
 the bounded-concurrency diagnostic also passed every test. No runtime behavior,
 dependency, lockfile or CI command was changed by the harness correction.
+
+## 2026-10-28 — Backend GitHub verification workflow
+
+Added a separate credential-free CI workflow for pull requests, manual runs and
+pushes to main or the Supabase candidate branch. It has read-only repository
+permissions, disables checkout credential persistence and uses verified official
+checkout v7.0.1/setup-node v7.1.0 commit pins. Both jobs install/assert Node
+22.23.1/npm 11.17.0 and use deterministic npm ci. Foundation runs its nine
+security tests; core runs the unchanged default npm test command (build plus
+146 tests) and lint. No runtime secret, database service, migration or deploy
+step is configured, and dependency/script policies remain unchanged.
+
+Workflow YAML and the complete two-file change were reviewed before publishing.
+The application/profile/SQL/Docker source remains identical to b682f18. Actual
+GitHub job results must match the new workflow commit before being counted as
+CI acceptance; this entry does not claim a provider build or deployment. Any
+staged operator source pin must be updated deliberately to the chosen commit.
