@@ -10,6 +10,7 @@
 !epdg-backend-core/scripts/hosted-practice/
 !epdg-backend-core/scripts/hosted-practice/bootstrap-supabase.cjs
 !epdg-backend-core/scripts/hosted-practice/supabase-seed.cjs
+!epdg-backend-core/scripts/hosted-practice/recovery-acceptance.cjs
 !epdg-backend-core/scripts/local-synthetic/
 !epdg-backend-core/scripts/local-synthetic/learning-fixtures.cjs
 !epdg-backend-core/scripts/local-synthetic/handoff-fixtures.cjs

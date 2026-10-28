@@ -22,7 +22,7 @@ RUN npm ci --omit=dev
 COPY --from=build /app/epdg-backend-core/dist ./dist
 COPY epdg-backend-core/src/hosted-practice/supabase-profile.json epdg-backend-core/src/hosted-practice/supabase-schema-manifest.json ./src/hosted-practice/
 COPY epdg-backend-core/src/learning/schema-manifest.json ./src/learning/schema-manifest.json
-COPY epdg-backend-core/scripts/hosted-practice/bootstrap-supabase.cjs epdg-backend-core/scripts/hosted-practice/supabase-seed.cjs ./scripts/hosted-practice/
+COPY epdg-backend-core/scripts/hosted-practice/bootstrap-supabase.cjs epdg-backend-core/scripts/hosted-practice/supabase-seed.cjs epdg-backend-core/scripts/hosted-practice/recovery-acceptance.cjs ./scripts/hosted-practice/
 COPY epdg-backend-core/scripts/local-synthetic/learning-fixtures.cjs epdg-backend-core/scripts/local-synthetic/handoff-fixtures.cjs epdg-backend-core/scripts/local-synthetic/learning-migration-policy.cjs ./scripts/local-synthetic/
 COPY scripts/hosted-practice/operator-profile.json /app/scripts/hosted-practice/operator-profile.json
 COPY supabase/migrations/20261028151409_epdg_supabase_app_baseline.sql \

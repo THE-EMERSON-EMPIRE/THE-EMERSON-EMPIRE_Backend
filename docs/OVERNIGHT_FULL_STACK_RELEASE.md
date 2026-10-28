@@ -510,3 +510,70 @@ lint passed with zero errors and the same 161 existing warnings. The bounded
 four-file diff was independently reviewed before its separate publication.
 The provider profile remains disabled. Hosted credentials, Supavisor semantics,
 operator image execution and deployment acceptance remain separate gates.
+
+## 2026-10-28 — Private synthetic recovery acceptance operator
+
+Added an explicit opt-in operator script for learner-a@epdg.invalid recovery.
+The default bootstrap command, API code, source profile, SQL, role grants and
+the preferred learner B alias are unchanged. The operator image copies only
+the additional reviewed script and retains its default bootstrap entrypoint.
+
+The helper validates the existing operator project/environment/service and
+Supabase route, verifies strict database TLS, immutable instance/hash binding
+and read-only startup mode, then proves a newly issued API session hash exists
+in that selected database before requesting recovery. All operator queries are
+SELECT-only and scoped capture/session/token reads use the fixed fictional
+learner. An old Railway target or mismatched database fails before reset.
+
+Normal HTTPS portal requests include the approved Origin, portal request header,
+real opaque cookie and server-returned CSRF token for authenticated mutations.
+The check requires a generic recovery response, exactly one new private capture,
+an exact approved-origin reset link with the 20-minute notice and matching token
+expiry, old-session revocation, one-use token rejection and temporary-password
+login. It restores the fixture through normal change-password, verifies restored
+sign-in and revocation, and logs out test sessions. Finally cleanup attempts the
+same API restoration after an ambiguous or failed reset; incomplete restoration
+is a failing result. Passwords, HTML, cookies, CSRF and recovery tokens stay in
+process, with only fixed-stage/boolean results emitted. No SMTP or handoff key
+is used, and no private recovery link is sent to a browser or chat.
+
+Fourteen injected-IO regressions cover preconnect refusal, database-target
+binding, capture/link/expiry scope, session/replay behavior, normal restoration,
+ambiguous-reset cleanup, restoration failure and secret-free error summaries.
+The current source has not executed this acceptance against a hosted API. The
+operator must remain opt-in and run only after the API is retargeted and passes
+strict readiness; hosted recovery, image and release acceptance are still pending.
+
+## 2026-10-28 — Private operator failure diagnostics
+
+The first hosted Supabase operator image fetched the reviewed 25de51e source
+and built with the pinned toolchain, then stopped in the generic bootstrap
+failure handler. The provider catalog check afterward showed no application
+schemas or application role and the unchanged managed schema ACL fingerprint.
+This establishes a safe failed attempt; it does not establish the cause or
+imply that the privately entered credential was incorrect. The API remains
+on the prior healthy Railway database release while this is investigated.
+
+The operator now emits one privacy-safe JSON failure result with a source-defined
+phase and a finite approved SQLSTATE, network or TLS code, or UNCLASSIFIED.
+Environment failures may identify a known variable name or fixed check name;
+they never include its value or credential length. No raw message, detail,
+query, parameters, assertion actual/expected rows, stack or cause is logged.
+Private idle pg-client error listeners also stop further work through the same
+handler instead of allowing Node to print an unhandled error. Existing provider,
+TLS, operator identity, role, SQL, preservation and runtime gates remain intact.
+The source profile and migration bytes are unchanged. Retry requires review of
+the new safe phase/code result; unchanged blind retries are not acceptance.
+
+Injected-client and actual CLI regressions cover finite-code redaction, forged
+metadata, environment refusal before connection, connect/transaction/identity
+failure phases and idle error handling. This source preparation changes no
+provider configuration, credentials or database objects and claims no successful
+hosted bootstrap, recovery check or production publication.
+
+The complete default core build/test command passed 168/168 with no skips;
+root tests passed 9/9 and lint passed with zero errors and the existing 161
+warnings. Initial sandbox-only root HTTP tests failed to fetch their ephemeral
+loopback server, and that restricted core attempt was stopped. The unchanged
+default commands passed with loopback networking permitted. The failure was an
+execution restriction, not evidence of an application change or hosted fault.
