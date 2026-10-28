@@ -9,6 +9,7 @@ const {X509Certificate}=require('node:crypto');
 const {rootCertificates}=require('node:tls');
 const {bootstrap,bootstrapFailure}=require('../scripts/hosted-practice/bootstrap-supabase.cjs');
 const profile=require('../src/hosted-practice/supabase-profile.json');
+const originalProfile=JSON.stringify(profile);
 const manifest=require('../src/hosted-practice/supabase-schema-manifest.json');
 const operator=require('../../scripts/hosted-practice/operator-profile.json');
 const privateSentinel='Unit-private-diagnostic-sentinel-not-a-real-secret';
@@ -85,7 +86,7 @@ test('environment diagnostics stop before client construction and expose no runt
   assert.equal(result.code,Object.hasOwn(patch,'HOSTED_PRACTICE_DB_CA_CERT')?'UNCLASSIFIED':'EPDG_GATE');
   if(result.variable)assert.ok(Object.keys(patch).includes(result.variable),'Only the rejected variable name is allowed');
  }
- assert.equal(constructed,0);assert.equal(profile.enabled,false);
+ assert.equal(constructed,0);assert.equal(JSON.stringify(profile),originalProfile);
 });
 
 test('connection failures preserve the original error while reporting only the fixed connect phase',async()=>{

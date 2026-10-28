@@ -10,7 +10,7 @@ const {databaseSearchPath}=require('../dist/db/index.js');
 const {checkSupabaseIdentity}=require('../dist/hosted-practice/supabase-readiness.js');
 const manifest=require('../src/hosted-practice/supabase-schema-manifest.json');
 const configured=require('../src/hosted-practice/supabase-profile.json');
-const p={...configured,enabled:true};
+const p=configured;
 const ca=rootCertificates.find(value=>{const c=new X509Certificate(value);return c.ca&&Date.parse(c.validFrom)<=Date.now()&&Date.parse(c.validTo)>Date.now();});
 const env=()=>({EPDG_HOSTED_PRACTICE_MODE:'1',EPDG_HOSTED_PRACTICE_DATABASE_PROVIDER:'supabase',NODE_ENV:'production',
  RAILWAY_PROJECT_ID:p.projectId,RAILWAY_ENVIRONMENT_ID:p.environmentId,RAILWAY_SERVICE_ID:p.serviceId,
@@ -20,9 +20,12 @@ const env=()=>({EPDG_HOSTED_PRACTICE_MODE:'1',EPDG_HOSTED_PRACTICE_DATABASE_PROV
  FRONTEND_URL:p.frontendOrigin,CORS_ORIGINS:p.frontendOrigins.join(','),EPDG_HOSTED_PRACTICE_LOGIN_ALIAS:p.loginAlias,
  MAIL_DELIVERY_MODE:'database-capture',SMTP_FROM:'EPDG Synthetic <no-reply@epdg.invalid>'});
 
-test('Supabase source profile stays disabled while an explicitly reviewed candidate validates exact provider pins',()=>{
- assert.equal(configured.enabled,false);
- assert.throws(()=>validateHostedPracticeEnvironment(env()));
+test('reviewed Supabase activation validates exact provider pins and rejects a disabled candidate',()=>{
+ assert.equal(configured.enabled,true);
+ assert.equal(configured.frontendOrigin,'https://epdg.netlify.app');
+ assert.deepEqual(configured.frontendOrigins,['https://epdg.netlify.app','https://hosted-practice--epdg.netlify.app']);
+ assert.equal(validateHostedPracticeEnvironment(env()).supabaseProjectRef,'ymitqvcxttcbesijzbfy');
+ assert.throws(()=>validateHostedPracticeEnvironment(env(),{...p,enabled:false}));
  assert.equal(validateHostedPracticeEnvironment(env(),p).supabaseProjectRef,'ymitqvcxttcbesijzbfy');
  for(const patch of [{EPDG_HOSTED_PRACTICE_DATABASE_PROVIDER:undefined},{EPDG_HOSTED_PRACTICE_DATABASE_PROVIDER:'railway'},
   {EPDG_HOSTED_PRACTICE_DATABASE_PROVIDER:'unreviewed'},{DB_HOST:'db.otherproject.supabase.co'},
@@ -36,12 +39,9 @@ test('Supabase source profile stays disabled while an explicitly reviewed candid
 });
 
 test('Supabase search path excludes public and explicitly places temp after catalog and application schema',()=>{
- // Default-disabled source cannot silently select a provider or open the portal.
+ // Without hosted mode and an explicit provider selector, the existing default is retained.
  assert.equal(databaseSearchPath({}),'epdg,public');
- assert.throws(()=>databaseSearchPath(env()));
- const runtime=require('../dist/hosted-practice/supabase-profile.json'),original=runtime.enabled;
- runtime.enabled=true;
- try{assert.equal(databaseSearchPath(env()),'pg_catalog,epdg,pg_temp');}finally{runtime.enabled=original;}
+ assert.equal(databaseSearchPath(env()),'pg_catalog,epdg,pg_temp');
 });
 
 test('only the verified session pooler maps project-suffixed logins to the unchanged SQL app principal',()=>{

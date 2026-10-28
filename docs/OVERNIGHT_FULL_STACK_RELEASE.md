@@ -652,3 +652,71 @@ core jobs and toolchain policies are unchanged. The workflow adds no database,
 service, runtime credential, migration or deployment step. Source, SQL, profile
 and provider configuration are unchanged by this separate CI commit. Its actual
 current-head result must pass before the next operator release is accepted.
+
+## 2026-10-28 — Source-only Supabase activation draft
+
+Prepared a separate activation branch from canonical main
+`baa9d0fa2eb87a16c46c35144634a2a06d2e3288`. The source profile now enables the
+reviewed Supabase provider and selects `https://epdg.netlify.app` as the primary
+frontend/recovery origin, followed by the existing hosted-practice preview in
+the same two-origin CORS set. Endpoint, organization, instance, database, schema,
+TLS, role and all eleven SQL hashes remain unchanged. This branch performs no
+provider operation, runtime environment write, API retarget, migration, merge or
+publication. The current API remains on its earlier isolated Railway database;
+production remains locked and owner/admin controls stay closed. Real HR records
+remain excluded from EPDG; applicant, resume and onboarding ownership stays in
+the CRM, with education access beginning only after verified onboarding.
+
+The corrected Railway operator repeat
+`334cb705-88e4-4c58-948e-0432b8b5cac5`, pinned to reviewed source
+`f5f493d46ad151cf4ac8de67a95477c382110a04`, emitted a successful detailed receipt
+at 18:54:48.622 UTC, verified at 19:02:52 UTC. It reported Supabase,
+`appliedFreshSchema:false`, `previousRowsOverwritten:false`, four synthetic
+accounts, 33 application tables, verified TLS, preserved managed objects,
+`runtimeBypassRls:false`, closed privileged controls, no external mail and no
+real records copied. The separate actual restricted-app session at 19:00:46 UTC
+passed the shared explicit initializer, full identity/access contract and exact
+four-account `.invalid` fixture-password parity with read-only mode explicitly
+on. It read no operator credential and performed no database writes. These
+receipts satisfy provider bootstrap/session acceptance; they do not establish
+that the API has switched providers or that hosted functional flows pass.
+
+Keep this PR in draft pending independent review, current-head checks and the
+controlled runtime acceptance plan. After a reviewed normal source merge, the
+release owner must pin the actual main source, separately provision only the
+restricted app credential and matching production-first runtime origins, then
+retarget the isolated API and prove strict readiness. Actual learner/mentor,
+assignment/file/revision, private recovery with credential restoration and
+signed CRM-to-portal roundtrip acceptance remain required before the final
+frontend build, production publication and relock. Use fresh sessions and new
+target-bound clearance events; never replay old sessions or approvals.
+Containment restores the verified earlier API/provider configuration and locked
+frontend, preserving the Supabase data and all migration/receipt history.
+
+The separate legacy website-intake project `gqlyofoazfkumirhbnmc` retains the
+reviewed source migration `20261028153644_website_intake_synthetic_bridge.sql`
+mapped to actual provider ledger version `20261028170015`, without ledger
+rewrite. Its `website-intake-synthetic` function is active at version 1. The CRM
+owner verified eight capture checks and actual owner HMAC pull/ack, empty retry,
+exclusion persistence and sign-out behavior. Its native Supabase GitHub
+integration was verified unconnected at 18:30:40 UTC. These are preview-only
+intake facts, separate from the new EPDG project `ymitqvcxttcbesijzbfy`; they
+authorize neither real imports nor learner activation.
+
+At the new EPDG provider's 18:17 UTC maintenance checkpoint, the security advisor
+reported zero findings and performance advisor reported ten informational
+unindexed-foreign-key and 33 unused-index items. Preserve the reviewed SQL and
+indexes; no incidental performance DDL is part of activation. Tests now validate
+the enabled production-first source directly, inject an explicitly disabled
+candidate for the negative gate and snapshot operator source configuration to
+prove it stays unchanged. They no longer toggle the compiled profile globally.
+
+The unchanged default core command passed 176/176 tests plus build; foundation
+passed 9/9, with zero skips in either suite. Lint passed with zero errors and
+161 existing warnings using pinned Node 22.23.1/npm 11.17.0. The first restricted
+root run could not reach its temporary loopback server; root and core passed
+with local loopback permission and unchanged commands. Native Deno 2.8.1 passed
+all four tests with network/environment/filesystem/subprocess permissions denied,
+plus frozen checks, lint and formatting against the unchanged canonical Git
+blobs, avoiding Windows checkout line-ending differences. Exact-head GitHub
+results remain a separate required check before source acceptance.

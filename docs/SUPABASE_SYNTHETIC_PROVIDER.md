@@ -1,18 +1,24 @@
-# Separate Supabase synthetic database candidate
+# Separate Supabase synthetic database activation candidate
 
 This candidate preserves the working Railway database profile and migrations.
-The API remains on Railway. The new source-pinned database profile is disabled;
-the absent provider selector continues using Railway. Selecting `supabase`
-without separately reviewed source enablement fails closed.
+The deployed API remains on its prior Railway database at this draft source
+checkpoint. This activation candidate enables the source-pinned Supabase profile
+and makes `https://epdg.netlify.app` the primary recovery origin, retaining the
+hosted-practice preview in the same approved CORS set. The absent provider
+selector continues using Railway. Selecting `supabase` still requires the exact
+reviewed environment, origin, instance, restricted app credential and TLS pins.
+Source enablement is not a runtime cutover or production publication.
 
 The reviewed target is the new `epdg-portal-synthetic` Supabase project
 `ymitqvcxttcbesijzbfy` in organization `hickjdguujhpyiqjddip`, with database
 `postgres` and direct endpoint `db.ymitqvcxttcbesijzbfy.supabase.co:5432`.
-The disabled source profile selects the dashboard-verified session endpoint
+The source profile selects the dashboard-verified session endpoint
 `aws-0-us-west-1.pooler.supabase.com:5432`, using the project-suffixed login while
 retaining the base SQL principal. The reviewed direct endpoint remains supported
 as a separate source profile configuration; its IPv6 reachability is unproven.
-Actual session behavior tests remain required. Both routes require verified
+The actual restricted-app session passed the shared explicit initializer,
+identity/access contract and four fictional credential checks in read-only mode.
+Hosted API flow acceptance remains required. Both routes require verified
 network reachability, the approved CA and normal TLS hostname checks.
 Transaction pooling and port 6543 are outside this candidate.
 
@@ -87,7 +93,10 @@ stage, copies the explicit eleven-file SQL allowlist and required operator
 assets, and runs as non-root `node`. Its dedicated ignore file excludes private
 runtime files and unrelated legacy SQL. Use its default operator command; it
 opens no HTTP port and is not an API deployment. No local Docker engine was
-available, so the provider image build remains a separate acceptance check.
+available locally. The actual provider operator image built and its corrected
+repeat at source `f5f493d46ad151cf4ac8de67a95477c382110a04` passed strict TLS,
+managed-object preservation, 33-table/four-account checks and runtime readiness
+without fresh schema installation or row overwrite.
 
 Before installation, the job requires all seven namespaces and the app role to
 be absent. It locks the operation, verifies the managed operator and strict TLS,
@@ -105,10 +114,16 @@ login mapping, startup options and GUC forwarding. Hosted acceptance
 additionally requires verified selected-route reachability and secure runtime
 credential provisioning. No second authentication provider is introduced.
 
-After acceptance, source enablement and the runtime provider selector are a
-separate reviewed cutover. Start fresh sessions, a separate HMAC secret and CRM
-clearance events bound to the new target; do not clone or silently replay old sessions/approvals. The
-previous Railway database remains a rollback baseline. Containment disables the
+This source-only activation draft requires current-head CI, independent review
+and a controlled runtime acceptance plan before merge or cutover. The runtime
+provider selector, restricted app credential and exact production-first origins
+must then be applied separately to the reviewed API source. Actual strict
+readiness, learner/mentor/assignment/file/revision flows, private recovery with
+fixture restoration and CRM roundtrip must pass before frontend publication.
+Keep production locked and owner/admin controls closed. Start fresh sessions,
+a separate HMAC secret and CRM clearance events bound to the new target; do not
+clone or silently replay old sessions/approvals. The previous Railway database
+remains a rollback baseline. Containment disables the
 new profile/bridge or returns to the verified earlier provider; never reverse
 migration history, overwrite retained evidence or delete managed data.
 
