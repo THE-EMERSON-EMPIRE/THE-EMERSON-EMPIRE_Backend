@@ -64,6 +64,12 @@ schema ACL drift. Readiness checks both direct and inherited browser/service
 role privileges. This does not claim the provider's superuser/service operator
 is unable to change its own database.
 
+Durable ownership is checked through PostgreSQL's ownership-dependency catalog,
+including managed invoker functions/types and object classes without schemas.
+The exception applies only to objects in actual engine temporary namespaces,
+preserving the inherited TEMP contract. Independent compiled-source QA covers
+the additional function/enum ownership negatives and all 46 isolation cases.
+
 ## Operator and acceptance sequence
 
 `epdg-backend-core/scripts/hosted-practice/bootstrap-supabase.cjs` is an explicit

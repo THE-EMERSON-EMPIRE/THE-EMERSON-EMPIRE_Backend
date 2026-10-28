@@ -65,8 +65,8 @@ function identity(){return {db:'postgres',role:p.databaseUser,port:5432,rolsuper
  database_host:p.databaseHost,baseline_sha256:p.baselineSha256,isolation_sha256:p.isolationSha256,schema_sha256:manifest.hosted.sha256,
  source_instance:p.instanceId,source_provider:'supabase',source_project_ref:p.supabaseProjectRef,source_baseline:p.baselineSha256,source_isolation:p.isolationSha256};}
 function catalog(){return {app_tables:33,app_rls:33,app_owner_drift:false,app_relation_owner_drift:false,app_function_owner_drift:false,
- unknown_namespace:false,managed_create:false,managed_table:false,managed_column:false,managed_sequence:false,managed_definer:false,browser_effective:false,managed_schema_acl:p.managedSchemaAclMd5};}
-const client=(first,second)=>({async query(sql){return {rows:[sql.includes('current_database()')?first:second]};}});
+ durable_owner:false,unknown_namespace:false,managed_create:false,managed_table:false,managed_column:false,managed_sequence:false,managed_definer:false,browser_effective:false,managed_schema_acl:p.managedSchemaAclMd5};}
+const client=(first,second)=>({async query(sql){return {rows:[sql.startsWith('SELECT current_database()')?first:second]};}});
 test('Supabase catalog gate rejects TLS, role, endpoint, marker, ownership and inherited capability drift',async()=>{
  await checkSupabaseIdentity(client(identity(),catalog()),p);
  for(const patch of [{role:'postgres'},{db:'other'},{port:6543},{tls:false},{rolbypassrls:true},{rolcreaterole:true},
@@ -76,7 +76,7 @@ test('Supabase catalog gate rejects TLS, role, endpoint, marker, ownership and i
   {source_instance:'unreviewed'},{schema_sha256:'0'.repeat(64)}])
   await assert.rejects(checkSupabaseIdentity(client({...identity(),...patch},catalog()),p),error=>error.statusCode===503);
  for(const patch of [{app_tables:34},{app_rls:32},{app_owner_drift:true},{app_relation_owner_drift:true},
-  {app_function_owner_drift:true},{unknown_namespace:true},{managed_create:true},{managed_table:true},{managed_column:true},{managed_sequence:true},
+  {app_function_owner_drift:true},{durable_owner:true},{unknown_namespace:true},{managed_create:true},{managed_table:true},{managed_column:true},{managed_sequence:true},
   {managed_definer:true},{browser_effective:true},{managed_schema_acl:'0'.repeat(32)}])
   await assert.rejects(checkSupabaseIdentity(client(identity(),{...catalog(),...patch}),p),error=>error.statusCode===503);
 });

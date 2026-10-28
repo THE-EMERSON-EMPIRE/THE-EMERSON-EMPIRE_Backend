@@ -483,3 +483,30 @@ The application/profile/SQL/Docker source remains identical to b682f18. Actual
 GitHub job results must match the new workflow commit before being counted as
 CI acceptance; this entry does not claim a provider build or deployment. Any
 staged operator source pin must be updated deliberately to the chosen commit.
+
+## 2026-10-28 — Complete the durable ownership readiness boundary
+
+The new read-only GitHub workflow completed successfully at 951c6c8 in run
+40722653368: nine foundation tests, 146 core tests/build and lint passed on the
+pinned toolchain. That run covers the CI-only commit before this separate
+runtime correction; a later source head requires its own workflow result.
+
+Independent targeted QA then reproduced two readiness gaps: assigning the app
+role ownership of a managed invoker function or enum was accepted. The Supabase
+gate now uses PostgreSQL's shared ownership-dependency catalog to reject durable
+ownership across object classes, including managed functions/types, default ACLs,
+publications and shared/other-database objects. Only objects resolving to actual
+PostgreSQL temporary namespaces are excepted; a schema-name prefix cannot bypass
+the gate. No role, grant, schema, migration, profile, Docker or CI configuration
+is changed by this correction.
+
+The predicate passed six actual PG17 cases, including temporary table/type
+preservation and durable function/enum/default-ACL/publication rejection. The
+complete compiled-source rehearsal passed 46/46 isolation/drift/TLS cases with
+valid no-drift controls, preserving managed catalog/DDL and app/password bytes.
+Source closure: 7cb412e3b4e99d7b23ab4e23fb98d2272fdfbe899ec7d5623f7e549427bee244.
+The current local default build/test command passed all 146 tests with no skips;
+lint passed with zero errors and the same 161 existing warnings. The bounded
+four-file diff was independently reviewed before its separate publication.
+The provider profile remains disabled. Hosted credentials, Supavisor semantics,
+operator image execution and deployment acceptance remain separate gates.

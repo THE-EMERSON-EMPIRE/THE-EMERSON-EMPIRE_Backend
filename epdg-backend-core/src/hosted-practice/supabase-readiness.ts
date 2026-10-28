@@ -46,6 +46,13 @@ export async function checkSupabaseIdentity(client: PoolClient, p: SupabasePract
       AND c.relowner<>(SELECT oid FROM pg_roles WHERE rolname='postgres')) AS app_relation_owner_drift,
     EXISTS(SELECT 1 FROM pg_proc f JOIN pg_namespace n ON n.oid=f.pronamespace WHERE n.nspname=ANY($1::text[])
       AND f.proowner<>(SELECT oid FROM pg_roles WHERE rolname='postgres')) AS app_function_owner_drift,
+    EXISTS(SELECT 1 FROM pg_shdepend d WHERE d.refclassid='pg_authid'::regclass
+      AND d.refobjid=(SELECT oid FROM pg_roles WHERE rolname=current_user) AND d.deptype='o'
+      AND CASE WHEN d.dbid=(SELECT oid FROM pg_database WHERE datname=current_database()) THEN
+        NOT EXISTS(SELECT 1 FROM pg_identify_object(d.classid,d.objid,d.objsubid) object
+          JOIN pg_namespace temp ON temp.nspname=CASE WHEN object.type='schema' THEN object.name ELSE object.schema END
+          WHERE temp.oid=pg_my_temp_schema() OR pg_is_other_temp_schema(temp.oid))
+      ELSE true END) AS durable_owner,
     EXISTS(SELECT 1 FROM pg_namespace n WHERE n.nspname NOT IN ('pg_catalog','information_schema')
       AND n.nspname !~ '^pg_(toast(_temp_[0-9]+)?|temp_[0-9]+)$'
       AND n.nspname<>ALL($1::text[]) AND n.nspname<>ALL($2::text[])) AS unknown_namespace,
@@ -71,7 +78,7 @@ export async function checkSupabaseIdentity(client: PoolClient, p: SupabasePract
     md5(string_agg(n.nspname||':'||pg_get_userbyid(n.nspowner)||':'||coalesce(n.nspacl::text,''),E'\n' ORDER BY n.nspname)) AS managed_schema_acl
     FROM pg_namespace n WHERE n.nspname=ANY($2::text[])`, [manifest.appSchemas, managedSchemas, ['anon','authenticated','authenticator','service_role']]);
   if (!catalog || catalog.app_tables !== manifest.appTables || catalog.app_rls !== manifest.appTables || catalog.app_owner_drift ||
-      catalog.app_relation_owner_drift || catalog.app_function_owner_drift || catalog.unknown_namespace || catalog.managed_create ||
+      catalog.app_relation_owner_drift || catalog.app_function_owner_drift || catalog.durable_owner || catalog.unknown_namespace || catalog.managed_create ||
       catalog.managed_table || catalog.managed_column || catalog.managed_sequence || catalog.managed_definer || catalog.browser_effective ||
       catalog.managed_schema_acl !== p.managedSchemaAclMd5) throw unavailable();
 }
