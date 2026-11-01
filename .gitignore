@@ -16,4 +16,5 @@ build/
 .local-hosted-practice/
 scripts/hosted-practice/operator-profile.json
 /docs/*EVIDENCE*.json
+/docs/LOCAL_BACKEND_REVALIDATION_2026-10-24.json
 /docs/SYNTHETIC_CRM_ONBOARDING_HANDOFF.md
