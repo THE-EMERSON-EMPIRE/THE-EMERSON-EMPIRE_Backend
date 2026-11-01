@@ -14,3 +14,4 @@ build/
 .idea/
 .local-synthetic/
 .local-hosted-practice/
+scripts/hosted-practice/operator-profile.json
