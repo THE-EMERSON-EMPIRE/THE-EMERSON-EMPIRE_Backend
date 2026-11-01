@@ -4,9 +4,10 @@ import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
 import type { PoolClient } from 'pg';
 import { getPool } from '../db';
 import { logger } from '../utils/logger';
-import { Resend } from 'resend';
+import { deliverEmail } from '../utils/mailDelivery';
 import { createDualWriteUser } from '../utils/coreIdentity';
 import { requireEnvironmentVariable } from '../config/env';
+import { assertPublicLearnerRegistrationClosed } from '../security/publicRegistrationGate';
 
 const SALT_ROUNDS = 12;
 const PASSWORD_RESET_VERSION_CONTEXT = 'password-reset:v1:';
@@ -36,12 +37,6 @@ export function passwordResetVersionMatches(
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
-function getResend(): Resend {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY environment variable is not set');
-  }
-  return new Resend(process.env.RESEND_API_KEY);
-}
 
 async function withTransaction<T>(
   work: (client: PoolClient) => Promise<T>,
@@ -91,6 +86,7 @@ export class AuthService {
     school_type?: 'university' | 'college' | 'polytechnic' | 'tvet';
     cover_letter?: string;
   }): Promise<{ user: any; message: string }> {
+    assertPublicLearnerRegistrationClosed(data.role);
     const pool = getPool();
     const client = await pool.connect();
 
@@ -633,7 +629,7 @@ export class AuthService {
   private async sendVerificationEmail(email: string, token: string): Promise<void> {
     const verificationUrl = `${requireEnvironmentVariable('FRONTEND_URL').replace(/\/$/, '')}/verify-email?token=${token}`;
 
-    const { error } = await getResend().emails.send({
+    const { error } = await deliverEmail({
       from: requireEnvironmentVariable('SMTP_FROM'),
       to: email,
       subject: 'Verify your email — Emerson Empire',
@@ -680,7 +676,7 @@ export class AuthService {
   }
 
   private async sendPasswordResetEmail(email: string, resetUrl: string): Promise<void> {
-    const { error } = await getResend().emails.send({
+    const { error } = await deliverEmail({
       from: requireEnvironmentVariable('SMTP_FROM'),
       to: email,
       subject: 'Reset your password — Emerson Empire',

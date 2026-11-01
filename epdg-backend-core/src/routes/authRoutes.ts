@@ -1,8 +1,9 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { body } from 'express-validator';
 import * as AuthController from '../controllers/AuthController';
 import { authMiddleware } from '../middlewares/auth';
 import { loginLimiter } from '../middlewares/security';
+import { publicRegistrationGate } from '../security/publicRegistrationGate';
 
 const router = Router();
 
@@ -136,7 +137,7 @@ const router = Router();
  * @swagger
  * /api/auth/register:
  *   post:
- *     summary: Register a new user
+ *     summary: Legacy registration endpoint
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
@@ -145,6 +146,12 @@ const router = Router();
  *           schema:
  *             $ref: '#/components/schemas/RegisterRequest'
  *     responses:
+ *       410:
+ *         description: Intern applications are managed through Emerson HR in the CRM
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       201:
  *         description: Registration successful
  *         content:
@@ -173,11 +180,19 @@ const router = Router();
  */
 router.post(
   '/register',
+  (req: Request, res: Response, next: NextFunction) => {
+    const gate = publicRegistrationGate(req.body?.role);
+    if (gate) {
+      res.status(gate.status).json(gate.body);
+      return;
+    }
+    next();
+  },
   [
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-    body('role').isIn(['company', 'intern', 'school']).withMessage('Public registration is available for company, intern, or school accounts'),
+    body('role').isIn(['company', 'school']).withMessage('Learner registration is closed; internship applications are managed by Emerson HR in the CRM'),
     body('school_type')
       .if(body('role').equals('school'))
       .optional()

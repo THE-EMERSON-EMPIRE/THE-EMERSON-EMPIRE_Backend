@@ -1,0 +1,62 @@
+{
+  "format": "epdg-synthetic-learning-import",
+  "version": 1,
+  "environment": "synthetic-local",
+  "batch_id": "SYNTHETIC-WEEK-8-9-BATCH-1",
+  "mapping_version": "SYNTHETIC-MAP-V1",
+  "reviewer_key": "SYNTHETIC-OPERATOR",
+  "mappings": {
+    "programs": [
+      {
+        "source_key": "SYNTHETIC-SOURCE-PROGRAM-A",
+        "target_program_id": "10000000-0000-4000-8000-000000000001"
+      }
+    ],
+    "assignments": [
+      {
+        "source_key": "SYNTHETIC-SOURCE-ASSIGNMENT-A",
+        "target_item_id": "30000000-0000-4000-8000-000000000004",
+        "target_program_id": "10000000-0000-4000-8000-000000000001"
+      }
+    ],
+    "people": [
+      {
+        "source_key": "SYNTHETIC-SOURCE-PERSON-A",
+        "target_learner_key": "SYNTHETIC-LEARNER-A"
+      }
+    ]
+  },
+  "resources": [
+    {
+      "source_id": "SYNTHETIC-RESOURCE-1",
+      "source_version": "v1",
+      "program_source_key": "SYNTHETIC-SOURCE-PROGRAM-A",
+      "resource_kind": "guide",
+      "format": "pdf",
+      "title": "SYNTHETIC Week 8 guide",
+      "description": "Fictional guide for import mapping checks.",
+      "source_ref": "urn:epdg-synthetic:RESOURCE-1",
+      "rights_use": "internal_training",
+      "source_permission_state": "not_applicable_synthetic",
+      "source_modified_at": "2026-10-30T12:00:00.000Z"
+    }
+  ],
+  "history": [
+    {
+      "source_id": "SYNTHETIC-HISTORY-1",
+      "source_version": "v1",
+      "record_kind": "deliverable",
+      "person_source_key": "SYNTHETIC-SOURCE-PERSON-A",
+      "program_source_key": "SYNTHETIC-SOURCE-PROGRAM-A",
+      "assignment_source_key": "SYNTHETIC-SOURCE-ASSIGNMENT-A",
+      "source_format": "docx",
+      "title": "SYNTHETIC Historical draft",
+      "summary": "SYNTHETIC Earlier draft retained as historical evidence.",
+      "source_ref": "urn:epdg-synthetic:HISTORY-1",
+      "original_work_at": "2026-09-22T15:30:00.000Z",
+      "source_modified_at": "2026-09-23T10:00:00.000Z",
+      "privacy_decision": "learner_and_assigned_mentor",
+      "source_permission_state": "not_applicable_synthetic"
+    }
+  ]
+}

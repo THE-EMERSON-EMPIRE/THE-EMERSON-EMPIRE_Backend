@@ -1,4 +1,5 @@
 import { getDatabaseSslConfig } from '../db/tls';
+import { validateSyntheticEnvironment } from './synthetic';
 
 export type RuntimeEnvironment = 'development' | 'test' | 'production';
 
@@ -86,8 +87,13 @@ export function validateEnvironment(
   env: NodeJS.ProcessEnv = process.env,
 ): RuntimeConfig {
   const nodeEnv = readNodeEnvironment(env.NODE_ENV);
+  const synthetic = env.EPDG_SYNTHETIC_MODE === '1';
+  if (synthetic) validateSyntheticEnvironment(env);
+  if (!synthetic && env.MAIL_DELIVERY_MODE && env.MAIL_DELIVERY_MODE !== 'resend') {
+    throw new Error('Mailpit delivery requires the isolated local test runner');
+  }
   const required = [
-    ...CORE_REQUIRED_VARIABLES,
+    ...CORE_REQUIRED_VARIABLES.filter((name) => !(synthetic && name === 'RESEND_API_KEY')),
     ...(nodeEnv === 'production' ? PRODUCTION_REQUIRED_VARIABLES : []),
   ];
   const missing = required.filter((name) => !hasValue(env[name]));

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { AuthService } from '../services/AuthService';
 import { validationResult } from 'express-validator';
 import { AuthRequest } from '../middlewares/auth';
+import { publicRegistrationGate } from '../security/publicRegistrationGate';
 
 const authService = new AuthService();
 
@@ -14,6 +15,11 @@ function publicValidationErrors(req: Request) {
 
 export const register = async (req: Request, res: Response) => {
   try {
+    const gate = publicRegistrationGate(req.body?.role);
+    if (gate) {
+      res.status(gate.status).json(gate.body);
+      return;
+    }
     const errors = publicValidationErrors(req);
     if (errors.length > 0) {
       res.status(400).json({ success: false, message: 'Validation failed', errors });
