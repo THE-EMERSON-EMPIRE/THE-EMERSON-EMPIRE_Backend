@@ -15,3 +15,5 @@ build/
 .local-synthetic/
 .local-hosted-practice/
 scripts/hosted-practice/operator-profile.json
+/docs/*EVIDENCE*.json
+/docs/SYNTHETIC_CRM_ONBOARDING_HANDOFF.md
