@@ -23,7 +23,7 @@ export function createApp({ readinessCheck = testConnection }: AppDependencies =
   app.use(sanitizeServerErrors);
   // Authenticate bounded exact bytes before JSON parsing and browser CORS.
   app.use(handoffPath, createHandoffRouter());
-  app.use(express.json({ limit: '16kb' }));
+  app.use(express.json({ limit: '16kb', inflate: false }));
 
   app.use(cors(corsOptions));
   app.options('*', cors(corsOptions));

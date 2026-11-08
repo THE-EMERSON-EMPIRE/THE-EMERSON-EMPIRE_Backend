@@ -769,3 +769,87 @@ zero failures and skips. Core lint passed with zero errors and the same 161
 existing warnings. The three added transaction regression tests are included
 in that 179-test result. Exact-head GitHub CI and independent full-diff review
 remain separate required evidence before a controlled runtime release.
+
+## 2026-11-08 — Production service recovery
+
+The founder authorized restoration of the existing production service, preserving
+closed learner activation and privileged controls. Canonical main
+`62f0b09dbf74f0650005ee61de88e7d6cf7b5db2` passed its current GitHub foundation,
+core build/security/lint and native-intake jobs before provider deployment.
+
+The actual main Supabase target was verified through its authenticated provider
+dashboard and a strict TLS database connection. The service's stale database
+password was not reused. A verified custom-format application backup and archive
+catalog were retained privately before an independently reviewed additive security
+transaction. Its live rollback rehearsal passed, then its apply committed at
+23:00:26 UTC. The unchanged security baseline checksum is
+`2be5ff9026acdf54ef79fd913a09fc8fffc0b02b080c224b7af680a4ceba1860`;
+the scoped runtime-grant proposal checksum is
+`6c1cdffa2ba154e506dd3193e94e153a2c8b81bf6d6b361d9e6ba627cd1836e0`.
+Existing rows and RLS settings were preserved. Six security tables and the
+checksum ledger were added, with zero activated accounts or memberships.
+The new nonprivileged runtime cannot activate accounts, grant memberships,
+modify personnel records, change legacy roles or edit/delete audit history.
+
+A fresh runtime login independently passed verified TLS and the actual compiled
+`checkSecuritySchema()` contract. Only the existing production service received
+the verified CA, independent CSRF secret, production environment/origin settings,
+restricted database credential and reviewed source pin. No values belong in Git.
+
+The initial Nixpacks build `0bbb83d1-84ea-43f7-a9be-64d32f1a0ca8` was aborted
+because it selected an unpinned toolchain. Replacement deployment
+`05a8b182-47fb-41fb-84a8-50407a1a1ac0` succeeded at 23:11:05 UTC. It reuses the
+reviewed `Dockerfile.hosted-practice` image with the explicit production entry
+`dist/index.js`, never the practice entry. Both Docker stages assert Node 22.23.1
+and npm 11.17.0. Provider readback shows DOCKERFILE, the core source root, empty
+explicit config-file selection, production start command, existing port/health
+settings and no staged changes. Runtime logs confirm database connection and
+port 5000. Thirteen live HTTP readiness/authentication-denial/origin/closed-control
+checks passed. The first verifier's unsanitized 503 expectation was corrected to
+the existing canonical sanitizer contract; its failed receipt was retained.
+
+This is technical service recovery, not positive real-user learning acceptance.
+Real learner activation and privileged controls remain closed. Build-time audit
+findings require their separately recorded dependency/reachability assessment.
+Keep the successful deployment pinned while that assessment and any reviewed
+follow-up proceed. To contain a regression, stop the new deployment and disable
+only its restricted login if required; retain the additive schema, ledger and
+backup. Do not roll back by dropping schemas, resetting data, replaying synthetic
+seeds or promoting the old failed application deployment.
+
+Workspace evidence is in `build-evidence/live-recovery-20261108/`: the production
+backup receipt, security review/rehearsal/apply, runtime verification, Docker
+configuration review, HTTP acceptance and backend restoration receipts. Private
+credential files and application backup contents must never be committed.
+
+## 2026-11-08 — Reject production compressed JSON before authentication
+
+The production JSON parser now uses `inflate: false` while retaining its 16 KiB
+limit. This applies the maintainer's workaround for
+[GHSA-27r3-jxmh-p828](https://github.com/expressjs/body-parser/security/advisories/GHSA-27r3-jxmh-p828),
+which affects the currently pinned body-parser dependency. Ordinary JSON and
+explicit identity encoding remain supported; gzip and deflate JSON receive a
+privacy-safe 415 before decompression, origin checks or authentication work.
+The already hardened practice parser, dependency locks, database permissions,
+activation and privileged-control gates are unchanged.
+
+The local regression uses small valid gzip/deflate bodies, never a malicious
+trailing-frame payload or a live service. It verifies 415 with zero login calls,
+health after each rejection, normal plain/identity JSON reaching the existing
+login boundary, and 413 for oversized uncompressed JSON. Against the previous
+compiled production parser the regression failed as expected (403 instead of
+415); after rebuilding the fix it passed.
+
+Using Node 22.23.1 and npm 11.17.0, foundation tests passed 9/9, core build and
+security tests passed 180/180, and core lint passed with zero errors and the
+same 161 existing warnings. On Windows, core build and its Node test command
+were invoked separately to avoid the unpacked npm launcher path; fresh CI uses
+the repository's normal deterministic install/test workflow. Independent full
+diff review and exact-commit CI are required before merge. The production
+Docker release and repeated live readiness/closed-control checks remain a
+separate operator step; no production compression probe is part of this change.
+
+This is a runtime mitigation, not a dependency upgrade or a clean-audit claim.
+Do not restore an inflation-enabled parser as rollback; retain the last reviewed
+safe candidate or stop the service if verification fails. Preserve all production
+data, the additive security schema and existing access restrictions.
