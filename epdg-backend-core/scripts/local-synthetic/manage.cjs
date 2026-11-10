@@ -161,6 +161,9 @@ async function main(){
   if(command==='setup')return setup();
   if(command==='start')return start();
   if(command==='security-migrate'){startPg();return require('./security-migrate.cjs').migrate();}
+  if(command==='admin-migrate'){startPg();return require('./admin-migrate.cjs').migrate();}
+  if(command==='admin-seed')return require('./admin-seed.cjs').seed();
+  if(command==='foundation-seed')return require('./foundation-seed.cjs').seed();
   if(command==='security-seed')return require('./security-seed.cjs').seed();
   if(command==='learning-migrate'){startPg();return require('./learning-migrate.cjs').migrate();}
   if(command==='learning-seed')return require('./learning-seed.cjs').seed();
@@ -168,6 +171,6 @@ async function main(){
   if(command==='stop')return stop();
   if(command==='verify')return require('./security-verify.cjs').verify();
   if(command==='status'){await preflight(config());console.log(JSON.stringify({database:'verified',backend:await isReady('http://127.0.0.1:58000/health'),mailpit:await isReady('http://127.0.0.1:58025/api/v1/messages',mailHeaders(config()))}));return;}
-  throw new Error('Use setup, start, verify, status, or stop');
+  throw new Error('Use setup, foundation-seed, security-migrate, security-seed, learning-migrate, admin-migrate, admin-seed, start, status, verify, or stop');
 }
 main().catch(e=>{console.error('Synthetic stack command failed:',e.message.replace(/password[^ ]*/gi,'[redacted]'));process.exit(1);});

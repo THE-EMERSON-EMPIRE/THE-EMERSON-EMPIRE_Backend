@@ -294,3 +294,40 @@ For PR-environment application rollback, redeploy exact runtime code head
 strict TLS, `SELECT 1`, readiness, CORS, authentication, cleanup, and
 privacy-safe log checks. No database rollback or migration compensation is
 required for the documentation reconciliation.
+
+## 2026-11-09 — Isolated EPDG administrator API candidate
+
+A staging-only administrator API and additive private-schema migration were prepared on an isolated backend branch. The migration was applied only to a fresh local PostgreSQL cluster containing fictional .invalid fixtures. API checks passed for server-session restoration, CSRF, access denials, synthetic user isolation, audit writes, and pending-only WebDev requests. No active WebDev permissions were granted.
+
+Backend foundation tests passed 9/9; the EPDG backend build and tests passed 151/151; lint exited 0 with 161 existing warnings and no errors. The local synthetic stack was stopped after checks and its data remains private and ignored.
+
+Production remains locked. The exact founder and WebDev production identity lookup was blocked by automatic review; this did not establish whether either identity exists. No production account, role, migration, Railway service, Supabase schema, Netlify site, SSO setting, or real learner record changed. The migration has no production rollback execution because it has not been applied; keep the feature closed and preserve audit records if future validation fails.
+
+## 2026-11-10 12:34 EST — Neon EPDG administrator staging integration
+
+### Scope and provider boundary
+
+- Neon organization `org-soft-brook-94771364` remained on the Free plan with six projects after authorized provisioning. Five projects now have empty `staging` branches created without compute. SYS-05 has its own child `staging` branch `br-plain-unit-bc3s0lqy` in `aws-us-east-1`.
+- The EPDG staging database is `emerson_epdg_portal_app` in project `lively-hill-76068632`. The default `main` branch and all other Neon projects remain unconnected to application runtimes.
+- Only the dedicated non-default Neon staging branch changed. No Supabase schema, Netlify site, Railway project/service, production database, real identity, or learner record changed.
+
+### Migration and runtime-role evidence
+
+- Applied the reviewed checksummed portal-security baseline, admin-staging migration, and synthetic foundation migration to the isolated Neon staging branch. The migration ledger has three matching entries. No production migration history was read or modified.
+- `epdg_portal_migrator` is an elevated Neon role used only for operator migrations and synthetic fixture setup on this isolated branch; it is not an application identity. The app uses a separate `epdg_portal_runtime` role, initially scoped read-only and then narrowed to reviewed table/column permissions for `core`, `epdg`, and `portal_security`.
+- Verified 16 RLS-enabled application tables, zero `PUBLIC` policies, zero runtime memberships in elevated PostgreSQL roles, and no runtime permission to delete users, change identity passwords, activate accounts, create roles/databases/schema objects, or change role assignment status.
+- Verification data is limited to two synthetic `@epdg.invalid` identities, one pending synthetic WebDev request, and synthetic audit/session records. There are no learner profiles, schools, companies, or non-synthetic identities. Fixture passwords are generated in memory and are not human review credentials.
+
+### Candidate and test results
+
+- Backend local branch: `codex/epdg-admin-api-staging-20261109`, base checkout `e8dfef785715dfd7150a977c6876d7fa134c1f72`, with uncommitted review candidate changes. Its remote is the organization-owned backend repository.
+- Frontend PR #44 remains draft, open, unmerged, and mergeable at remote head `1daeea5f1a8c3c20985dafa42df580ba7b2398e8`. Do not merge it by itself.
+- The connected GitHub App installation lists the WebDev user account only; the `THE-EMERSON-EMPIRE` organization installation is absent. No companion backend PR was published and no alternate write route was used.
+- Backend root tests: 9/9 passed. `epdg-backend-core` build and tests: 157/157 passed. Lint exited 0 with 161 existing warnings and no errors. Frontend tests: 93/93 passed; lint and isolated noindex build checks passed.
+- Local API integration against the hosted Neon staging branch passed TLS readiness, synthetic login, session restore, admin overview/users, CSRF denial, pending-only WebDev request, no learner/recovery routes, runtime privilege/RLS checks, and logout.
+
+### Deployment blocker and rollback plan
+
+- No Railway admin service was created. The connected Railway plan is not exposed; a dedicated always-on 0.25 vCPU / 0.5 GB service estimates approximately $10/month resource usage before egress/storage and plan effects. Explicit billing approval remains required. See [Railway pricing plans](https://docs.railway.com/pricing/plans).
+- A hosted deployment also needs the authorized GitHub App installation on the organization backend repository so the candidate can be published and reviewed. The local-to-Neon test is not evidence of a hosted Railway deployment or a reachable dashboard.
+- No destructive rollback is prepared because changes are limited to the non-default staging branch. If rejected, leave it offline and use a reviewed forward-only `REVOKE`/disable operation for runtime access; preserve the migration ledger and synthetic audit data. Do not rewrite migration history or delete review evidence.

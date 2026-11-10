@@ -20,7 +20,7 @@ function cleanEnv() {
   return env;
 }
 function runtimeEnv(c) {
-  return { ...cleanEnv(), EPDG_SYNTHETIC_MODE: '1', NODE_ENV: 'test',
+  return { ...cleanEnv(), EPDG_SYNTHETIC_MODE: '1', EPDG_ADMIN_STAGING_MODE: '1', NODE_ENV: 'test',
     DB_HOST: '127.0.0.1', DB_PORT: '55432', DB_NAME: 'epdg_synthetic',
     DB_USER: 'epdg_synthetic_app', DB_PASSWORD: c.appPassword, DB_SSL: 'false',
     JWT_SECRET: c.jwtSecret, CERT_SIGNING_SECRET: c.certificateSecret,

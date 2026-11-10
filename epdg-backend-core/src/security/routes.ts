@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import type { PoolClient } from 'pg';
 import rateLimit from 'express-rate-limit';
 import { PortalService } from './PortalService';
 import { portalConfig, portalOriginAllowed } from './config';
@@ -10,6 +11,8 @@ import { attachmentLimit, attachmentMediaType, multipartRevision } from '../lear
 import { isHostedPractice } from '../hosted-practice/profile';
 import { resolvePracticeEmail } from '../hosted-practice/loginAlias';
 import { publicRegistrationGate } from './publicRegistrationGate';
+import { AdminService } from './AdminService';
+import { hasAdminPermission, isAdminStagingEnabled, type AdminPermission } from './adminPolicy';
 
 type Handler = (req: Request, res: Response) => Promise<void>;
 const disabled = (_req: Request, res: Response) => { res.status(503).json({ success: false, message: 'Unavailable pending security review', errors: [] }); };
@@ -23,6 +26,7 @@ function body(req: Request, keys: string[]): Record<string, unknown> {
 export function createPortalRouter(): Router {
   const router = Router();
   const service = new PortalService();
+  const administrator = new AdminService();
   const learning = new LearningService(service);
   const mentor = new MentorReviewService(service);
   // This parser is invoked only after current session/CSRF and synthetic scope
@@ -224,6 +228,31 @@ export function createPortalRouter(): Router {
       'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "sandbox; default-src 'none'", 'Cache-Control': 'no-store' });
     res.send(file.bytes);
   }));
+  const adminAuthenticated = (permission: AdminPermission,
+    handler: (client: PoolClient, user: Awaited<ReturnType<PortalService['session']>>['user'], req: Request) => Promise<unknown> | unknown) =>
+    wrap(async (req, res) => {
+      if (!isAdminStagingEnabled()) { disabled(req, res); return; }
+      noQuery(req);
+      const raw = sessionCookie(req);
+      if (!raw) throw new PortalError(401, 'Authentication required');
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !constantEquals(req.get('X-CSRF-Token'), csrfToken(raw))) {
+        throw new PortalError(403, 'Request verification failed');
+      }
+      await service.withAuthenticatedSession(raw, async (client, user) => {
+        if (!hasAdminPermission(user, permission)) throw new PortalError(403, 'Administrator permission required');
+        const data = await handler(client, user, req);
+        res.json({ success: true, data });
+      });
+    });
+
+  router.get('/admin/overview', adminAuthenticated('admin.overview.read', (client, user) => administrator.overview(client, user)));
+  router.get('/admin/users', adminAuthenticated('admin.users.read', (client, user) => administrator.users(client, user)));
+  router.get('/admin/roles', adminAuthenticated('admin.roles.read', (client, user) => administrator.roles(client, user)));
+  router.post('/admin/role-requests', adminAuthenticated('admin.roles.request', (client, user, req) => {
+    const input = body(req, ['target_user_id', 'role_code']);
+    return administrator.requestWebDevRole(client, user, input.target_user_id, input.role_code);
+  }));
+  router.get('/admin/education-readiness', adminAuthenticated('admin.overview.read', (_client, user) => administrator.educationReadiness(user)));
   router.use(['/admin', '/mentor', '/intern', '/onboarding', '/upload', '/users'], authenticated(async (req, res) => { disabled(req, res); }));
   return router;
 }
