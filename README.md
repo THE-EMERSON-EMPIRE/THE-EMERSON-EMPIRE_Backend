@@ -14,6 +14,12 @@ not a Production deployment or promotion.
 the single target, origin-classification, and database-diagnosis record. Do not
 deploy the root foundation in its place.
 
+The separate synthetic administrator API candidate has its own proposed
+service settings in
+[docs/ADMIN_STAGING_RAILWAY_MANIFEST.md](docs/ADMIN_STAGING_RAILWAY_MANIFEST.md).
+That service has not been created; do not reuse the existing production
+service's `railway.toml` for it.
+
 ## Toolchain
 
 - Node.js `22.23.1`
