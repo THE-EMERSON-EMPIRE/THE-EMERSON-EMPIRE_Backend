@@ -338,5 +338,32 @@ Production remains locked. The exact founder and WebDev production identity look
 - Added `docs/ADMIN_STAGING_RAILWAY_MANIFEST.md` with the isolated service source, build/start commands, runtime variable names, health behavior, pooling gate, release gates, and code/database rollback boundaries. It contains no secret values. No Railway settings or services were changed.
 - Neon metadata showed the staging endpoint idle after a prior suspend. A read-only query as `epdg_portal_runtime` succeeded and resumed it. A controlled suspend followed by another read-only runtime-role query also resumed the endpoint. This validates provider-level scale-to-zero and reconnect behavior on the synthetic child branch, not the app's own pool recovery.
 - The same runtime-role query reported `max_connections=450`, `rolconnlimit=-1`, and one current database session. No concurrent connection-limit stress was induced. Endpoint metadata reports `pooler_enabled=false`; its pooled hostname was not exercised by the API or application.
-- The app-level pooling test and post-commit local verification remain blocked in this runner: repository toolchain requires Node `22.23.1` and npm `11.17.0`, but only Node `24.22.1` is available and npm is absent; no `NEON_ADMIN_STAGING_*` connection variables are present. Do not run the repo suite under the wrong runtime or expose connection secrets through shell/tool logs.
-- No manual snapshot, external encrypted export, or restore drill was created. No hosted Railway plan or incremental bill was verifiable, and no service was created. Existing production and synthetic Railway services remain untouched.
+- At that point, the app-level pool check and post-commit verification were blocked in the original runner, which lacked the pinned Node/npm toolchain and staging variables. Those checks were completed later using a separate exact-version worktree and a controlled, secret-safe runtime harness; see the 18:17 EST entry below.
+- No manual snapshot was created at that point. No hosted Railway plan or incremental bill was verifiable, and no service was created. Existing production and synthetic Railway services remain untouched.
+
+## 2026-11-10 18:17 EST — Exact-head validation, application pool recovery, and encrypted restore
+
+### Exact candidate validation
+
+- Frontend PR #44 was validated at exact remote head `1daeea5f1a8c3c20985dafa42df580ba7b2398e8` in a separate worktree with pinned Node `22.23.1` and npm `11.17.0`: `npm ci`, `npm run build:admin-staging`, `npm run lint`, `npm test` (93/93), `npm run build`, and `npm run smoke` passed. The draft remains open and unmerged.
+- The local backend candidate on `codex/epdg-admin-api-staging-20261109` passed root tests (9/9), the `epdg-backend-core` build, core tests (157/157), and lint (161 existing warnings, zero errors) with the same pinned toolchain. No application source code changed during this validation step.
+
+### Application-level Neon checks
+
+- The compiled admin API was started locally against only Neon synthetic staging branch `br-plain-unit-bc3s0lqy`, using the app's actual `getPool()` and TLS verification. After the endpoint was idle, startup completed in 6.2 seconds and `/health` returned `200` in 384 ms. A read-only transaction (`BEGIN READ ONLY`, `SELECT 1`, `COMMIT`) passed.
+- A bounded burst of 24 concurrent `SELECT pg_sleep(0.25)` calls reached the actual node-postgres pool limit of 10, queued 14 callers, completed all 24 queries, and returned to 10 idle connections with no waiters.
+- Temporarily disabling only the synthetic Neon endpoint caused that same API process to return `/health` `503`; restoring the endpoint returned `/health` to `200` without restarting the app. The endpoint was verified restored (`disabled=false`), and the harness was stopped.
+- Neon PgBouncer was not tested: endpoint metadata reports `pooler_enabled=false`, and this source-pinned profile uses the direct host. These checks establish app-level `pg.Pool` behavior and recovery, not a Neon PgBouncer test or a connection-limit exhaustion test.
+
+### Encrypted logical export and restore drill
+
+- Created an independent logical row export from the original synthetic staging branch. It covers 16 application tables and 23 rows. The artifact is AES-256-GCM encrypted, and the randomly generated key is wrapped with Windows DPAPI for the current Windows user. No plaintext dump was retained.
+- Restored the rows into a separate schema, `epdg_restore_drill_20261110`, on child branch `br-noisy-dust-bcljub0i`. Per-table row counts and SHA-256 values all matched the export. The original staging branch was read-only during export; the restore branch remains available as drill evidence.
+- The files are in the workspace at `infrastructure/private-backups/epdg-staging/`; the safe manifest records artifact and wrapped-key hashes. This is an encrypted logical row export, not a full schema backup: DDL remains in checked-in migrations and is not embedded in the artifact.
+
+### Prepared deployment and remaining gates
+
+- Added declarative `.railway/railway.ts` for the separate `epdg-admin-staging` service and updated `docs/ADMIN_STAGING_RAILWAY_MANIFEST.md`. The file is preparation only; it was not applied. No Railway project, service, domain, environment variable, secret, or deployment was created or changed.
+- Publishing a companion backend PR remains blocked because the connected GitHub App installation does not include the organization-owned backend repository. The connected Railway workspace plan and remaining included credit are not exposed, so the incremental invoice amount remains unverified; explicit cost approval is still required. The exact HTTPS admin UI origin is also not yet verified.
+- Current Railway published rates indicate approximately $10/month in CPU/RAM resource usage for an always-on 0.25 vCPU / 0.5 GB service; an 8-hour window is about $0.11 and 24 hours about $0.33 before egress, storage, plan minimums, and included credits. See [Railway pricing plans](https://docs.railway.com/pricing/plans) and [understanding your bill](https://docs.railway.com/pricing/understanding-your-bill). The user's actual workspace plan/credit and final cost were not verified.
+- Keep PR #44 draft and unmerged. Production founder activation remains closed. Existing production, synthetic practice, Netlify, Supabase, CRM, real identities, and learner records were not changed.
