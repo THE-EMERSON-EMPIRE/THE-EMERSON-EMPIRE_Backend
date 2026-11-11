@@ -108,3 +108,28 @@ audit writes before opening the portal. If validation fails, keep the portal
 closed and disable the feature; do not delete audit data or rewrite migration
 history. A schema rollback has not been authorized or prepared because it could
 discard review records.
+
+## Current-main reconciliation verification — 2026-11-11
+
+- The focused port is based on current backend `main` at
+  `b1ce7b415d9d77eef42219d8976115868d5fb8aa`, with implementation commit
+  `cc961c0a3de796b499d89026e5b9f8d149e4de35` in draft PR #12. It changes 28
+  files (+1,740/−23). The original PR #11 remains an unrebased draft for
+  historical review.
+- GitHub Actions run #13 passed the pinned foundation, core build/security/
+  test/lint, and native synthetic-intake jobs. The workflow verified Node
+  22.23.1/npm 11.17.0 and Deno 2.8.1.
+- Ten new admin and Neon-profile tests passed locally. The Windows checkout now
+  pins LF for both staging SQL migration directories so their reviewed
+  SHA-256 values remain stable.
+- The current-main backend candidate was not run against Neon during this
+  reconciliation. No migration, fixture seed, runtime grant change, Railway
+  service, deployment, or production action was performed.
+- Frontend PR #44 remains draft and points reviewers to backend PR #12. Both
+  backend candidates and the frontend candidate remain unmerged and
+  undeployed.
+
+The release remains gated on joint review of PR #12 and #44, confirmation of
+the admin UI origin, and separate approval of Railway workspace billing and
+incremental cost. Production identity verification and any production
+database migration remain outside this candidate.

@@ -853,3 +853,38 @@ This is a runtime mitigation, not a dependency upgrade or a clean-audit claim.
 Do not restore an inflation-enabled parser as rollback; retain the last reviewed
 safe candidate or stop the service if verification fails. Preserve all production
 data, the additive security schema and existing access restrictions.
+
+## 2026-11-11 — Administrator staging candidate reconciliation
+
+The original backend PR #11 branch was 20 commits behind current `main` and
+contained a broad, conflicting synthetic portal foundation alongside the
+administrator work. To avoid rewriting that public history or replacing newer
+main work, a focused candidate was ported onto
+`b1ce7b415d9d77eef42219d8976115868d5fb8aa`. The resulting branch is
+`codex/epdg-admin-api-staging-reconciled-20261111`, implementation commit
+`cc961c0a3de796b499d89026e5b9f8d149e4de35`, draft [backend PR #12](https://github.com/THE-EMERSON-EMPIRE/THE-EMERSON-EMPIRE_Backend/pull/12),
+with 28 files changed (+1,740/−23). PR #11 remains unchanged and draft as the
+historical source branch.
+
+The reconciliation preserves the current backend-check workflow, learning,
+mentor, and CRM-handoff implementation. The admin API stays in its own entry
+point and router. New staging SQL migration directories are pinned to LF so
+Windows checkouts preserve their manifest checksums. The old branch's changes
+to general security routes and its deleted local synthetic manager were not
+reintroduced.
+
+GitHub Actions run #13 passed all three jobs on the pinned Node 22.23.1/npm
+11.17.0 and Deno 2.8.1 toolchains: foundation tests, core build/security
+tests/lint, and native synthetic-intake tests/type checks/lint/format. Local
+focused admin/profile tests passed 10/10. The frontend PR #44 remains a draft;
+its body now identifies PR #12 as the current-main backend counterpart and
+records the passing pinned CI.
+
+This was a source and review preparation only. No Neon migration, fixture
+mutation, runtime role change, Railway service, deployment, production identity,
+learner activation, or merge occurred. Keep PR #12 and #44 in draft through
+joint review. Before any staging service is considered, confirm the exact
+admin UI origin, Railway plan and incremental cost, and separate billing
+approval. If review stops, leave the drafts unmerged; no hosted change needs
+rollback. Do not roll back an applied audit migration by dropping its schema
+or deleting records.
