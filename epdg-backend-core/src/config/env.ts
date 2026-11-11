@@ -1,5 +1,6 @@
 import { getDatabaseSslConfig } from '../db/tls';
 import { validateSyntheticEnvironment } from './synthetic';
+import { isNeonAdminStaging, validateNeonAdminStagingEnvironment } from '../neon-admin-staging/profile';
 
 export type RuntimeEnvironment = 'development' | 'test' | 'production';
 
@@ -88,13 +89,15 @@ export function validateEnvironment(
 ): RuntimeConfig {
   const nodeEnv = readNodeEnvironment(env.NODE_ENV);
   const synthetic = env.EPDG_SYNTHETIC_MODE === '1';
-  if (synthetic) validateSyntheticEnvironment(env);
+  const neonAdminStaging = isNeonAdminStaging(env);
+  if (neonAdminStaging) validateNeonAdminStagingEnvironment(env);
+  else if (synthetic) validateSyntheticEnvironment(env);
   if (!synthetic && env.MAIL_DELIVERY_MODE && env.MAIL_DELIVERY_MODE !== 'resend') {
     throw new Error('Mailpit delivery requires the isolated local test runner');
   }
   const required = [
-    ...CORE_REQUIRED_VARIABLES.filter((name) => !(synthetic && name === 'RESEND_API_KEY')),
-    ...(nodeEnv === 'production' ? PRODUCTION_REQUIRED_VARIABLES : []),
+    ...(neonAdminStaging ? [] : CORE_REQUIRED_VARIABLES.filter((name) => !(synthetic && name === 'RESEND_API_KEY'))),
+    ...(nodeEnv === 'production' && !neonAdminStaging ? PRODUCTION_REQUIRED_VARIABLES : []),
   ];
   const missing = required.filter((name) => !hasValue(env[name]));
 
@@ -103,18 +106,20 @@ export function validateEnvironment(
   }
 
   const jwtSecret = env.JWT_SECRET ?? '';
-  if (jwtSecret.length < 32) {
+  if (!neonAdminStaging && jwtSecret.length < 32) {
     throw new Error('JWT_SECRET must be at least 32 characters.');
   }
 
   const certificateSecret = env.CERT_SIGNING_SECRET ?? '';
-  if (certificateSecret.length < 32) {
+  if (!neonAdminStaging && certificateSecret.length < 32) {
     throw new Error('CERT_SIGNING_SECRET must be at least 32 characters.');
   }
 
   const production = nodeEnv === 'production';
-  validateHttpUrl('FRONTEND_URL', env.FRONTEND_URL, production);
-  validateHttpUrl('SUPABASE_URL', env.SUPABASE_URL, production);
+  if (!neonAdminStaging) {
+    validateHttpUrl('FRONTEND_URL', env.FRONTEND_URL, production);
+    validateHttpUrl('SUPABASE_URL', env.SUPABASE_URL, production);
+  }
 
   const corsOrigins = (env.CORS_ORIGINS ?? '')
     .split(',')

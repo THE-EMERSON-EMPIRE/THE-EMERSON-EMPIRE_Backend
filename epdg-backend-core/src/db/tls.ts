@@ -1,12 +1,14 @@
 import { X509Certificate } from 'node:crypto';
 import { isHostedPractice, validateHostedPracticeEnvironment } from '../hosted-practice/profile';
 import { normalizeHostedPracticeCa } from '../hosted-practice/tls';
+import { isNeonAdminStaging, validateNeonAdminStagingEnvironment } from '../neon-admin-staging/profile';
 
 const PEM_BEGIN = '-----BEGIN CERTIFICATE-----';
 const PEM_END = '-----END CERTIFICATE-----';
 
 export interface StrictDatabaseTlsConfig {
-  ca: string;
+  /** Neon staging uses Node's normal system trust store; Supabase profiles pin an explicit CA. */
+  ca?: string;
   rejectUnauthorized: true;
 }
 
@@ -68,7 +70,8 @@ export function requiresDatabaseTls(
     env.NODE_ENV === 'production' ||
     Boolean(env.SUPABASE_DB_CA_CERT?.trim()) ||
     env.DB_HOST?.endsWith('.supabase.com') === true ||
-    env.DB_HOST?.endsWith('.supabase.co') === true
+    env.DB_HOST?.endsWith('.supabase.co') === true ||
+    (isNeonAdminStaging(env) && env.DB_HOST?.endsWith('.aws.neon.tech') === true)
   );
 }
 
@@ -78,6 +81,10 @@ export function getDatabaseSslConfig(
   if (isHostedPractice(env)) {
     validateHostedPracticeEnvironment(env);
     return { ca: normalizeHostedPracticeCa(env.HOSTED_PRACTICE_DB_CA_CERT), rejectUnauthorized: true };
+  }
+  if (isNeonAdminStaging(env)) {
+    validateNeonAdminStagingEnvironment(env);
+    return { rejectUnauthorized: true };
   }
   if (!requiresDatabaseTls(env)) {
     return false;

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "enabled": true,
+  "projectId": "lively-hill-76068632",
+  "branchId": "br-plain-unit-bc3s0lqy",
+  "branchName": "staging",
+  "region": "aws-us-east-1",
+  "databaseName": "emerson_epdg_portal_app",
+  "databaseHost": "ep-late-breeze-bce2mem6.c-16.us-east-1.aws.neon.tech",
+  "migratorRole": "epdg_portal_migrator",
+  "runtimeRole": "epdg_portal_runtime"
+}
