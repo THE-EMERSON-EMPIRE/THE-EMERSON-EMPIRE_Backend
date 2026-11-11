@@ -1,112 +1,69 @@
 # EPDG hosted administrator staging integration review
 
-**Status:** Draft plan (2026-11-11). No merge, site creation, deployment,
-Railway resource, Neon write, or reviewer-account creation occurred.
+**Status:** Review plan only. No hosted site, service, deployment, database write, reviewer account, or merge has occurred.
 
-## Review targets
+## Linked review stack
 
-- Backend [PR #12](https://github.com/THE-EMERSON-EMPIRE/THE-EMERSON-EMPIRE_Backend/pull/12), exact head `938b74c61c28c2aac3cb70c8bab23fbb9fa62728`, draft/mergeable; pinned CI run #14 passed all three foundation, core and native intake jobs.
-- Frontend [PR #44](https://github.com/webdev692/Empire-emerson_frontend/pull/44), draft.
-- Hosted frontend [PR #46](https://github.com/webdev692/Empire-emerson_frontend/pull/46), stacked on #44. An initial exact-head CI run caught a plugin typing issue; a focused fix was committed. Verify the latest commit's checks before acceptance.
-- This backend change is a separate draft stacked on #12. Review the PRs together.
+- Backend PR #12 contains the administrator API.
+- Backend PR #13 contains Railway staging preparation and is stacked on #12.
+- Frontend PR #44 contains the administrator interface.
+- Frontend PR #46 contains the hosted build and is stacked on #44.
 
-## API and permission contract
+Require current exact-head checks for all four PRs before the hosted test. Any CI result from an earlier PR head is stale for the updated head.
 
-| Method/path | Behavior |
+## API contract
+
+| Method/path | Expected behavior |
 |---|---|
-| `POST /api/auth/login` | Login for synthetic staging identities; creates server session cookie. |
-| `GET /api/auth/session` | Restores session; `GET /api/auth/me` alias. |
-| `POST /api/auth/logout` | Revokes session; CSRF-protected. |
-| `GET /api/admin/overview` | Server-authorized admin overview. |
-| `GET /api/admin/users` | Synthetic-only user listing. |
-| `GET /api/admin/roles` | Role/capability context; server authorization is authoritative. |
-| `POST /api/admin/role-requests` | Pending `webdev_technical` request only; grants no role/permission. |
-| `GET /api/admin/education-readiness` | Read-only readiness summary. |
+| POST /api/auth/login | Authenticate a synthetic staging identity and create a server session |
+| GET /api/auth/session | Restore the current session; /api/auth/me is an alias |
+| POST /api/auth/logout | Revoke the session and require CSRF protection |
+| GET /api/admin/overview | Return an authorized administrator overview |
+| GET /api/admin/users | Return synthetic-only users |
+| GET /api/admin/roles | Return server-authoritative role/capability context |
+| POST /api/admin/role-requests | Record a pending request only; do not grant permissions |
+| GET /api/admin/education-readiness | Return a read-only readiness summary |
 
-Backend unsafe routes require the exact configured Origin, reject cross-site
-fetch metadata, require JSON and `X-EPDG-Request: portal`; logout and protected
-writes require `X-CSRF-Token`. CORS credentials are restricted to the exact
-allowlist. Frontend uses relative `/api`, cookie credentials, no-store,
-in-memory CSRF state, and no browser token storage. The core admin staging app
-is a distinct entrypoint from the root JS service; startup does not migrate.
+Unsafe requests require the exact configured Origin, reject cross-site Fetch Metadata, require JSON and X-EPDG-Request: portal; logout and protected writes require X-CSRF-Token. CORS credentials are limited to the exact allowlist. The frontend uses relative /api, cookie credentials, no-store, in-memory CSRF state, and no browser token storage. The backend core is a separate entrypoint from the root JavaScript service. Startup does not migrate.
 
-## Hosted origins and security
+## Secure Netlify/Railway sequence
 
-Exact hosts are pending resource creation:
+1. Obtain founder approval for a bounded compute hard limit, soft/email alert, and test window. Do not create a resource before approval.
+2. Confirm the Netlify plan supports strict Team/Organization SSO and private project visibility. If strict SSO is unavailable, stop; shared-password protection is not an approved substitute.
+3. After approval, create an empty isolated Railway target and a dedicated Netlify site. Enable strict SSO/private access before attaching source, deploying, or provisioning a reviewer.
+4. Enter database connection values and secrets only in protected provider settings. Record exact HTTPS origins privately; configure the backend to allow only the exact UI origin.
+5. Review a non-destructive plan from the pinned Railway CLI. Confirm service root, source, build/start commands, health route, and absence of migrations. Require separate approval before attaching source or deploying.
+6. Create a separate short-lived synthetic .invalid reviewer only through an approved password vault. Deliver credentials with one-use, expiring vault access. No reviewer account or approved vault handoff is available yet.
+7. Exercise the application with synthetic identities only. Stop the service after the approved window.
 
-- UI intent: `https://<dedicated-admin-site>.netlify.app` on a new Netlify
-  site with team SSO. Existing `epdg.netlify.app` and the old manual-upload
-  review site are not targets.
-- API intent: `https://<generated-admin-service>.up.railway.app` on a new
-  isolated Railway service.
+Never place credential values or exact provider/database identifiers in Git, PRs, chat, public documents, or application logs.
 
-The proposed single forced rule is
-`/api/* https://<generated-admin-service>.up.railway.app/api/:splat 200!`.
-The browser calls same-origin `/api`; no other path is proxied. Backend
-`PORTAL_ORIGIN` and `CORS_ORIGINS` must be the exact Netlify origin only.
-The browser-visible, host-only `__Host-epdg_session` cookie must retain
-`Secure; HttpOnly; SameSite=Strict; Path=/` with no `Domain`. Verify the
-real Netlify proxy forwards `Origin`, `Sec-Fetch-Site`, `Cookie`,
-`X-EPDG-Request`, `X-CSRF-Token`, and returns `Set-Cookie` unchanged.
-This is not yet tested; stop if it fails and keep API protections intact.
+## Proxy and session hard stop
 
-All hops use HTTPS; Railway-to-Neon uses TLS with `DB_SSL=true` and
-certificate verification. Hosted CSP uses `connect-src 'self'`, no external
-fonts, no-store, HSTS, no framing and no indexing. Team SSO supplements API
-authentication; it does not replace it.
+The dedicated same-origin Netlify proxy should route only /api/* to the isolated backend. Verify unchanged forwarding for Origin, Sec-Fetch-Site, Cookie, X-EPDG-Request, and X-CSRF-Token. Verify backend Set-Cookie returns unchanged as the host-only __Host-epdg_session with Secure; HttpOnly; SameSite=Strict; Path=/ and no Domain. All browser, proxy, service, and database hops use HTTPS; the database connection verifies TLS certificates.
 
-## Neon isolation
+**Stop immediately** if any required header is missing or changed, or if the cookie is omitted or altered. Do not weaken origin, CORS, Fetch Metadata, CSRF, cookie, or TLS checks. Do not release reviewer access. Restrict the dedicated site and stop only the new service.
 
-Read-only checks pinned the separate Neon project
-`lively-hill-76068632`, staging branch `br-plain-unit-bc3s0lqy`, database
-`emerson_epdg_portal_app`, and runtime `epdg_portal_runtime`. Aggregate
-results were synthetic `.invalid` identities only in checked user tables,
-RLS on all 16 application tables, no PUBLIC policies, restricted runtime
-grants, and three migration checksums matching PR #12. No row contents or
-credential values were read into this review. The staging branch was not
-protected; protect and recheck it before hosted use. No SQL, record, account,
-role, or password changed. The existing fixture verifier rotates fixture
-password hashes and sessions, so it is not a safe reviewer-account flow.
+## Neon Free controls
 
-## Blockers and billing
+Protected branches are not available on Neon Free. Do not retry branch protection or upgrade for fictional staging records. Keep the target branch synthetic-only; use a restricted runtime role, reviewed forward-only migrations, independent recovery procedures, and approval before branch reset, destructive migration, or record change. Verify permissions and migration history before the hosted test. Keep production and real identities unchanged.
 
-1. New Netlify site and Railway service/domain do not exist; exact origins and
-   real proxy pass-through behavior are unknown.
-2. Railway connected tools do not expose plan/remaining credit. Check
-   Workspace → Billing/Usage and confirm the eight-hour budget.
-3. Confirm Railway GitHub installation can read the organization repository.
-4. Pin the `railway` SDK used by `railway/iac` and update the lockfile with
-   Node 22.23.1/npm 11.17.0 before a reproducible plan.
-5. Protect the Neon staging branch.
-6. No approved password-manager/credential creation connector is available;
-   no reviewer login was created. Use a separate short-lived `.invalid`
-   account through the approved secure flow.
+Do not use the current fixture verifier for reviewer setup because it rotates existing fixture credentials and sessions.
 
-Current Railway published rates imply about $0.12 for eight hours at 0.25
-vCPU/0.5 GB and 0.1 GB egress, or $0.34 at 1 vCPU/1 GB with the same egress.
-Free includes $1 monthly resource credit; Hobby is $5/month including $5
-usage; Pro is $20/month including $20 usage. Actual plan/credits, any plan
-change fee, and Neon/Netlify charges are unknown. Stop the service outside
-the approved window. [Railway pricing](https://docs.railway.com/pricing/plans).
+## Acceptance checklist
 
-## Acceptance
+Before any reviewer access, confirm:
 
-Before enabling access: review PR #12/#44/#46 and this draft; require green
-checks for exact heads; verify Netlify SSO and record exact origin; confirm
-Railway repo access, billing and plan output; prove service root/config/start
-command and absence of migrations; set secrets only in protected provider UI;
-protect Neon branch and recheck RLS/grants/hashes; create a separate synthetic
-reviewer only through the approved vault; test proxy header/cookie forwarding.
+- [ ] Current exact-head CI is green for backend #12/#13 and frontend #44/#46.
+- [ ] The founder approved the bounded compute limit, alert, resource creation, and test window.
+- [ ] The dedicated site is private and strict Team/Organization SSO is active.
+- [ ] The isolated service configuration and reviewed plan have no migration step or unrelated resource change.
+- [ ] Secrets and exact origins were set in protected provider settings.
+- [ ] The synthetic database branch, restricted role, and migration history pass review.
+- [ ] Proxy request headers and unchanged session-cookie behavior pass the hard-stop criteria above.
+- [ ] A separate short-lived synthetic reviewer was created through an approved vault; no credential is exposed in logs or public content.
+- [ ] Login, session restoration, logout, denied anonymous/wrong-origin access, pending-only role requests, read-only readiness, privacy-safe errors, and the staging health check behave as expected.
 
-Browser/API checks: synthetic login, refresh/session restoration, logout and
-network-failure retry; anonymous, wrong-origin, cross-site and unauthorized
-requests denied; role requests stay pending; education readiness stays
-read-only; no non-synthetic identity returned; privacy-safe logs; `/health`
-ready on staging. In an approved staging-only window, verify DB connection
-failure returns unavailable and recovers without changing a shared endpoint.
+## Rollback
 
-Rollback: no hosted state currently exists; leave drafts unmerged. Later,
-stop only the new Railway service and restrict only its dedicated Netlify site.
-Restore code only within that service; preserve Neon staging and migration
-history. Never touch production, drop schema, reset migration history, or
-delete records. Database compensation is forward-only.
+No hosted state exists yet. Until the gates pass, leave the PRs as drafts. If a later test fails, restrict only the dedicated Netlify site and stop only the dedicated Railway service. Preserve the synthetic database branch and migration history. Never retarget production, rewrite migration history, drop schema, or delete records. Database corrections must be reviewed and forward-only.
