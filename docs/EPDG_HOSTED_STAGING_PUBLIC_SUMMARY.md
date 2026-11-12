@@ -1,20 +1,31 @@
 # EPDG hosted administrator staging — public summary
 
-**Status:** Preparation is in review. No hosting resource, site, deployment, reviewer account, database write, or merge has occurred.
+Updated 2026-11-12.
+
+**Status:** A separate backend candidate and private frontend staging site have been deployed for a bounded synthetic-only check. The test remains incomplete and is not production-ready.
 
 ## Review stack
 
-- [Backend administrator API — PR #12](https://github.com/THE-EMERSON-EMPIRE/THE-EMERSON-EMPIRE_Backend/pull/12)
-- [Backend hosted staging preparation — PR #13](https://github.com/THE-EMERSON-EMPIRE/THE-EMERSON-EMPIRE_Backend/pull/13), stacked on #12
-- [Frontend administrator interface — PR #44](https://github.com/webdev692/Empire-emerson_frontend/pull/44)
-- [Frontend hosted build — PR #46](https://github.com/webdev692/Empire-emerson_frontend/pull/46), stacked on #44
+- Backend administrator API: draft PR #13.
+- Frontend administrator interface and hosted build: draft PR #46.
 
-The backend configuration now pins the SDK used by its Railway IaC file and has a lockfile generated with the declared Node.js/npm toolchain. Local configuration validation passed. A provider-side plan and live proxy test remain pending because the hosted resources do not exist.
+Both remain open and unmerged. The staging deployment does not authorize a production release.
 
-## Safety and remaining gates
+## Verified
 
-The proposed environment uses synthetic identities and a dedicated database branch. It preserves exact-origin checks, CSRF, secure host-only cookies, and database TLS. Neon Free does not offer protected branches; synthetic-only data, restricted access, reviewed forward-only changes, and recovery controls are the staging alternatives.
+- Required exact-head checks passed for the source revisions used in the hosted test. Those results belong to those source revisions; review current checks before accepting any later branch commit.
+- The isolated API health check returned success.
+- The frontend's site-level private-access gate blocked signed-out access. In the signed-in owner browser, the expected administrator sign-in screen loaded.
+- Unauthenticated session restoration returned to the sign-in screen without an origin/configuration error.
+- The check used the existing Neon staging branch. No database write or migration was performed.
 
-Before a bounded test, the founder must approve spending limits and the resource window. The team must verify strict Netlify SSO/private access, set secrets only in protected provider settings, review a provider plan, and prove that the proxy preserves required authentication headers and the session cookie. If any required header or cookie is changed or dropped, testing stops and backend protections remain strict. Reviewer access requires a short-lived synthetic account delivered through an approved secure vault.
+## Not tested and closeout
 
-This summary contains high-level review status only. The existing full release journal was not copied or updated in this PR.
+- No reviewer identity, password, or app session was created because safe credential provisioning was unavailable. Public registration remains disabled.
+- Authenticated login, overview, user and role screens, readiness workflows, CSRF and origin mutation checks, cookie/proxy acceptance, logout, and session revocation remain untested.
+- The Railway deployment showed serverless sleep, but a service-level zero-replica shutdown has not been verified. Keep closeout open until the isolated backend is stopped and shutdown is confirmed.
+- Netlify access was protected at the site level; no organization-wide SSO or existing site policy was changed. The public summary does not claim strict SAML SSO.
+
+## Data boundary
+
+No production service, production database, real account, HR record, learner record, or existing synthetic account was changed. Do not weaken TLS, origin, cookie, CSRF, or server-side authorization controls to make a check pass. Keep private origins, provider identifiers, deployment receipts, and credentials in the restricted release archive.
