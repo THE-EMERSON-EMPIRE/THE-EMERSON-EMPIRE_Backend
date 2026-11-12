@@ -11,6 +11,10 @@
   },
   "scripts": {
     "start": "node dist/index.js",
+    "start:admin-staging": "node dist/adminStaging.js",
+    "neon:admin-staging:migrate": "node scripts/neon-admin-staging/migrate.cjs",
+    "neon:admin-staging:configure": "node scripts/neon-admin-staging/configure-runtime.cjs",
+    "neon:admin-staging:verify": "node scripts/neon-admin-staging/verify.cjs",
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc && node scripts/copy-migrations.cjs",
     "lint": "eslint src --ext .ts",

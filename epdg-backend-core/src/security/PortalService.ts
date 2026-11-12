@@ -6,14 +6,19 @@ import { logger } from '../utils/logger';
 import { portalConfig } from './config';
 import { credentialVersion, hashToken, opaqueToken, PortalError, validPassword, validToken } from './primitives';
 import manifest from './schema-manifest.json';
+import adminSchemaManifest from './admin-schema-manifest.json';
 import { isHostedPractice } from '../hosted-practice/profile';
 import { checkHostedDatabase } from '../hosted-practice/readiness';
+import { isAdminStagingEnabled, permissionsForAdminRoles } from './adminPolicy';
+import { isNeonAdminStaging } from '../neon-admin-staging/profile';
 
 interface Membership { id: string; revision: string; school_id: number | null; company_id: number | null }
+interface RoleAssignment { id: string; role_code: string; revision: string }
 interface Account {
   id: number; name: string; email: string; password: string; role: string;
-  revision: string; active: boolean; eligible: boolean; memberships: Membership[];
+  revision: string; active: boolean; eligible: boolean; memberships: Membership[]; roleAssignments: RoleAssignment[];
 }
+interface AccountRow extends Omit<Account, 'memberships' | 'roleAssignments'> { identity_verified: boolean }
 interface SessionRow {
   id: string; user_id: number; credential_version: string; account_revision: string;
   membership_fingerprint: string; expires_at: Date; revoked_at: Date | null; current: boolean;
@@ -32,8 +37,10 @@ async function audit(client: PoolClient, event: string, userId: number, sessionI
 }
 async function account(client: PoolClient, userId: number, exclusive = false): Promise<Account | null> {
   const lock = exclusive ? 'UPDATE' : 'SHARE';
-  const { rows } = await client.query<Omit<Account, 'memberships'>>(`SELECT
+  const { rows } = await client.query<AccountRow>(`SELECT
     cu.id,cu.name,cu.email,cu.password,ubr.role_name::text AS role,st.active,st.revision::text,
+    (cu.deleted_at IS NULL AND eu.deleted_at IS NULL AND cu.is_verified AND eu.is_verified
+      AND eu.rejection_reason IS NULL AND ubr.rejection_reason IS NULL) AS identity_verified,
     (cu.deleted_at IS NULL AND eu.deleted_at IS NULL AND cu.is_verified AND eu.is_verified
       AND eu.rejection_reason IS NULL AND ubr.rejection_reason IS NULL
       AND CASE ubr.role_name::text
@@ -53,16 +60,30 @@ async function account(client: PoolClient, userId: number, exclusive = false): P
       AND ((m.school_id IS NOT NULL AND EXISTS(SELECT 1 FROM epdg.schools s WHERE s.id=m.school_id AND s.is_approved AND s.deleted_at IS NULL))
         OR (m.company_id IS NOT NULL AND EXISTS(SELECT 1 FROM epdg.companies c WHERE c.id=m.company_id AND c.is_approved AND c.deleted_at IS NULL)))
     ORDER BY m.id LIMIT 65`, [userId]);
-  return { ...rows[0], memberships };
+  const roleAssignments = isAdminStagingEnabled()
+    ? (await client.query<RoleAssignment>(`SELECT id::text,role_code,revision::text
+        FROM portal_security.role_assignments WHERE user_id=$1 AND status='active'
+        ORDER BY role_code,id LIMIT 8`, [userId])).rows
+    : [];
+  const identity = rows[0];
+  return { ...identity, eligible: identity.eligible || (isAdminStagingEnabled() && identity.identity_verified && roleAssignments.length > 0), memberships, roleAssignments };
 }
 function usable(user: Account | null): user is Account {
-  return Boolean(user && user.active && user.eligible && user.memberships.length > 0 && user.memberships.length <= 64);
+  return Boolean(user && user.active && user.eligible && user.memberships.length <= 64 && user.roleAssignments.length <= 8
+    && (user.memberships.length > 0 || (isAdminStagingEnabled() && user.roleAssignments.length > 0)));
 }
-const fingerprint = (user: Account) => hashToken(user.memberships.map(m => `${m.id}:${m.revision}`).join('|'));
+const fingerprint = (user: Account) => hashToken([
+  ...user.memberships.map(m => `${m.id}:${m.revision}`),
+  ...user.roleAssignments.map(role => `role:${role.id}:${role.role_code}:${role.revision}`),
+].join('|'));
 function publicUser(user: Account) {
-  return { id: user.id, name: user.name, email: user.email, legacy_role: user.role,
+  const base = { id: user.id, name: user.name, email: user.email, legacy_role: user.role,
     memberships: user.memberships.map(m => ({ id: m.id, school_id: m.school_id, company_id: m.company_id })),
     permissions: [] as string[], privileged_controls_available: false };
+  if (!isAdminStagingEnabled()) return base;
+  const portalRoles = user.roleAssignments.map(role => role.role_code);
+  const permissions = permissionsForAdminRoles(portalRoles);
+  return { ...base, portal_roles: portalRoles, permissions, privileged_controls_available: permissions.length > 0 };
 }
 async function revokeAll(client: PoolClient, userId: number, reason: 'password_reset' | 'password_changed') {
   await client.query('UPDATE portal_security.account_states SET revision=revision+1 WHERE user_id=$1', [userId]);
@@ -87,10 +108,33 @@ export async function checkSecuritySchema(): Promise<void> {
     has_table_privilege(current_user,'portal_security.audit_events','UPDATE,DELETE') AS audit_admin
     FROM portal_security.schema_migrations m
     CROSS JOIN pg_roles r WHERE m.version=$1 AND r.rolname=current_user`, [manifest.version]);
+  const expectedSecuredTables = isAdminStagingEnabled() ? 8 : 6;
   if (rows.length !== 1 || rows[0].sha256 !== manifest.sha256 || rows[0].rolsuper || rows[0].rolcreatedb || rows[0].rolcreaterole ||
-      rows[0].secured_tables !== 6 || rows[0].schema_create || rows[0].database_create || rows[0].account_admin ||
+      rows[0].secured_tables !== expectedSecuredTables || rows[0].schema_create || rows[0].database_create || rows[0].account_admin ||
       rows[0].membership_admin || rows[0].ledger_admin || rows[0].audit_admin) {
     throw new Error('Portal security schema or runtime role is not approved');
+  }
+  if (isAdminStagingEnabled()) await checkAdminStagingSchema();
+  if (isNeonAdminStaging()) {
+    const { rows: [boundary] } = await getPool().query<{ non_synthetic_users: number }>(`
+      SELECT count(*)::int AS non_synthetic_users FROM core.users
+      WHERE email NOT LIKE '%@epdg.invalid' OR name NOT LIKE 'SYNTHETIC %'`);
+    if (boundary.non_synthetic_users !== 0) throw new Error('Isolated Neon administrator staging data boundary is not approved');
+  }
+}
+
+export async function checkAdminStagingSchema(): Promise<void> {
+  if (!isAdminStagingEnabled()) throw new Error('Administrator staging is available only in the isolated local profile');
+  const { rows } = await getPool().query(`SELECT m.sha256,
+    (SELECT count(*)::int FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      WHERE n.nspname='portal_security' AND c.relname IN ('role_assignments','admin_events')
+        AND c.relkind='r' AND c.relrowsecurity) AS secured_admin_tables,
+    has_table_privilege(current_user,'portal_security.role_assignments','SELECT,INSERT') AS role_access,
+    has_table_privilege(current_user,'portal_security.admin_events','SELECT,INSERT') AS event_access
+    FROM portal_security.schema_migrations m WHERE m.version=$1`, [adminSchemaManifest.version]);
+  if (rows.length !== 1 || rows[0].sha256 !== adminSchemaManifest.sha256 || rows[0].secured_admin_tables !== 2 ||
+      !rows[0].role_access || !rows[0].event_access) {
+    throw new Error('Administrator staging schema or runtime grants are not approved');
   }
 }
 
@@ -126,7 +170,10 @@ export class PortalService {
   }
 
   async login(email: string, password: string, previous: string | null) {
-    const { rows } = await getPool().query<{id: number; password: string}>('SELECT id,password FROM core.users WHERE lower(email)=$1 LIMIT 2', [email]);
+    const loginQuery = isAdminStagingEnabled()
+      ? "SELECT id,password FROM core.users WHERE lower(email)=$1 AND email LIKE '%@epdg.invalid' AND name LIKE 'SYNTHETIC %' LIMIT 2"
+      : 'SELECT id,password FROM core.users WHERE lower(email)=$1 LIMIT 2';
+    const { rows } = await getPool().query<{id: number; password: string}>(loginQuery, [email]);
     const candidate = rows.length === 1 ? rows[0] : null;
     const matches = await bcrypt.compare(password, candidate?.password ?? dummyPasswordHash);
     if (!candidate || !matches) throw new PortalError(401, 'Invalid email or password');
