@@ -9,6 +9,9 @@ import { errorHandler } from './middlewares/errorHandler';
 import { sanitizeServerErrors } from './middlewares/sanitizeServerErrors';
 import { createHandoffRouter } from './handoff/routes';
 import { handoffPath } from './handoff/config';
+import { createInvitationRouter } from './security/invitationRoutes';
+import { createAdminStagingRouter } from './security/adminStagingRoutes';
+import { requireInvitationReview } from './security/invitationPolicy';
 
 export interface AppDependencies {
   readinessCheck?: () => Promise<void>;
@@ -46,6 +49,17 @@ export function createApp({ readinessCheck = testConnection }: AppDependencies =
     }
   });
 
+  app.use('/api', createInvitationRouter());
+  if (process.env.EPDG_INVITATION_REVIEW_MODE === '1') {
+    requireInvitationReview();
+    const adminReview = createAdminStagingRouter();
+    // Only administrator paths use the extra review router. The existing portal
+    // retains login aliases, password recovery, and bounded multipart uploads.
+    app.use('/api', (req, res, next) => {
+      if (req.path.startsWith('/admin/')) adminReview(req, res, next);
+      else next();
+    });
+  }
   app.use('/api', createPortalRouter());
 
   app.use((_req, res) => {

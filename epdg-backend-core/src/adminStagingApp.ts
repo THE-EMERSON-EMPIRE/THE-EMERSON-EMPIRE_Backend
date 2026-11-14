@@ -7,6 +7,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { sanitizeServerErrors } from './middlewares/sanitizeServerErrors';
 import { createAdminStagingRouter } from './security/adminStagingRoutes';
 import { isAdminStagingEnabled } from './security/adminPolicy';
+import { createInvitationRouter } from './security/invitationRoutes';
 
 export interface AdminStagingAppDependencies { readinessCheck: () => Promise<void> }
 
@@ -37,6 +38,7 @@ export function createAdminStagingApp({ readinessCheck }: AdminStagingAppDepende
       res.status(503).json({ success: false, service: 'epdg-admin-staging', status: 'unavailable' });
     }
   });
+  app.use('/api', createInvitationRouter());
   app.use('/api', createAdminStagingRouter());
   app.use((_req, res) => res.status(404).json({ success: false, message: 'Route not found', errors: [] }));
   app.use(errorHandler);
