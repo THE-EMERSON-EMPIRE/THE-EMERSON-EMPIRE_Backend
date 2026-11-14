@@ -7,6 +7,8 @@ import { testConnection } from './db';
 import { logger } from './utils/logger';
 import { portalConfig } from './security/config';
 import { checkSecuritySchema } from './security/PortalService';
+import { accountManagementEnabled } from './security/accountReleaseConfig';
+import { checkLearningReadiness } from './learning/LearningService';
 
 export async function start(): Promise<void> {
   let stage: 'environment' | 'database' | 'application' = 'environment';
@@ -19,10 +21,11 @@ export async function start(): Promise<void> {
     stage = 'database';
     await testConnection();
     await checkSecuritySchema();
+    if (accountManagementEnabled()) await checkLearningReadiness();
     logger.success('Database connected successfully');
 
     stage = 'application';
-    const app = createApp({ readinessCheck: async () => { await testConnection(); await checkSecuritySchema(); } });
+    const app = createApp({ readinessCheck: async () => { await testConnection(); await checkSecuritySchema(); if (accountManagementEnabled()) await checkLearningReadiness(); } });
     app.listen(port, () => {
       logger.success('Server started', { port });
     });

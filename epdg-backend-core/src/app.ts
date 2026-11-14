@@ -12,6 +12,8 @@ import { handoffPath } from './handoff/config';
 import { createInvitationRouter } from './security/invitationRoutes';
 import { createAdminStagingRouter } from './security/adminStagingRoutes';
 import { requireInvitationReview } from './security/invitationPolicy';
+import { createAccountManagementRouter } from './security/accountManagementRoutes';
+import { accountManagementEnabled, accountReleaseConfig } from './security/accountReleaseConfig';
 
 export interface AppDependencies {
   readinessCheck?: () => Promise<void>;
@@ -49,6 +51,11 @@ export function createApp({ readinessCheck = testConnection }: AppDependencies =
     }
   });
 
+  if (accountManagementEnabled()) {
+    accountReleaseConfig();
+    app.use('/api/auth', (_req,res,next)=>{const json=res.json.bind(res);res.json=(body)=>json({...body,environment:'portal-release-candidate'});next();});
+  }
+  app.use('/api', createAccountManagementRouter());
   app.use('/api', createInvitationRouter());
   if (process.env.EPDG_INVITATION_REVIEW_MODE === '1') {
     requireInvitationReview();

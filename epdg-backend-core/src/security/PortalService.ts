@@ -11,14 +11,18 @@ import { isHostedPractice } from '../hosted-practice/profile';
 import { checkHostedDatabase } from '../hosted-practice/readiness';
 import { isAdminStagingEnabled, permissionsForAdminRoles } from './adminPolicy';
 import { isNeonAdminStaging } from '../neon-admin-staging/profile';
+import { accountManagementEnabled, accountReleaseConfig, assertAccountRelease } from './accountReleaseConfig';
+import { ScopedAccessService, checkAccessSchema } from './ScopedAccessService';
+import accountManifest from './account-schema-manifest.json';
 
 interface Membership { id: string; revision: string; school_id: number | null; company_id: number | null }
 interface RoleAssignment { id: string; role_code: string; revision: string }
 interface Account {
   id: number; name: string; email: string; password: string; role: string;
   revision: string; active: boolean; eligible: boolean; memberships: Membership[]; roleAssignments: RoleAssignment[];
+  scopedAccess: Awaited<ReturnType<ScopedAccessService['snapshot']>> | null;
 }
-interface AccountRow extends Omit<Account, 'memberships' | 'roleAssignments'> { identity_verified: boolean }
+interface AccountRow extends Omit<Account, 'memberships' | 'roleAssignments' | 'scopedAccess'> { identity_verified: boolean }
 interface SessionRow {
   id: string; user_id: number; credential_version: string; account_revision: string;
   membership_fingerprint: string; expires_at: Date; revoked_at: Date | null; current: boolean;
@@ -37,10 +41,14 @@ async function audit(client: PoolClient, event: string, userId: number, sessionI
 }
 async function account(client: PoolClient, userId: number, exclusive = false): Promise<Account | null> {
   const lock = exclusive ? 'UPDATE' : 'SHARE';
+  const lockedRelations = accountManagementEnabled() ? 'st,cu,eu' : 'st,cu,eu,ubr';
   const { rows } = await client.query<AccountRow>(`SELECT
-    cu.id,cu.name,cu.email,cu.password,ubr.role_name::text AS role,st.active,st.revision::text,
+    cu.id,cu.name,lower(btrim(cu.email)) AS email,cu.password,ubr.role_name::text AS role,st.active,st.revision::text,
     (cu.deleted_at IS NULL AND eu.deleted_at IS NULL AND cu.is_verified AND eu.is_verified
-      AND eu.rejection_reason IS NULL AND ubr.rejection_reason IS NULL) AS identity_verified,
+      AND eu.rejection_reason IS NULL AND ubr.rejection_reason IS NULL
+      AND lower(btrim(cu.email))=lower(btrim(eu.email)) AND cu.password=eu.password
+      AND NOT EXISTS(SELECT 1 FROM core.users other WHERE other.id<>cu.id AND lower(btrim(other.email))=lower(btrim(cu.email)))
+      AND NOT EXISTS(SELECT 1 FROM epdg.users other WHERE other.id<>eu.id AND lower(btrim(other.email))=lower(btrim(eu.email)))) AS identity_verified,
     (cu.deleted_at IS NULL AND eu.deleted_at IS NULL AND cu.is_verified AND eu.is_verified
       AND eu.rejection_reason IS NULL AND ubr.rejection_reason IS NULL
       AND CASE ubr.role_name::text
@@ -53,33 +61,38 @@ async function account(client: PoolClient, userId: number, exclusive = false): P
     JOIN epdg.users eu ON eu.id=cu.id
     JOIN core.user_branch_roles ubr ON ubr.user_id=cu.id
     JOIN core.branches b ON b.id=ubr.branch_id AND b.code='epdg'
-    WHERE cu.id=$1 FOR ${lock} OF st,cu,eu,ubr`, [userId]);
+    WHERE cu.id=$1 FOR ${lock} OF ${lockedRelations}`, [userId]);
   if (rows.length !== 1) return null;
   const { rows: memberships } = await client.query<Membership>(`SELECT m.id,m.revision::text,m.school_id,m.company_id
     FROM portal_security.memberships m WHERE m.user_id=$1 AND m.active
       AND ((m.school_id IS NOT NULL AND EXISTS(SELECT 1 FROM epdg.schools s WHERE s.id=m.school_id AND s.is_approved AND s.deleted_at IS NULL))
         OR (m.company_id IS NOT NULL AND EXISTS(SELECT 1 FROM epdg.companies c WHERE c.id=m.company_id AND c.is_approved AND c.deleted_at IS NULL)))
     ORDER BY m.id LIMIT 65`, [userId]);
-  const roleAssignments = isAdminStagingEnabled()
+  const scopedAccess = accountManagementEnabled() ? await new ScopedAccessService().snapshot(client, userId) : null;
+  const roleAssignments = scopedAccess ? scopedAccess.assignments : isAdminStagingEnabled()
     ? (await client.query<RoleAssignment>(`SELECT id::text,role_code,revision::text
         FROM portal_security.role_assignments WHERE user_id=$1 AND status='active'
         ORDER BY role_code,id LIMIT 8`, [userId])).rows
     : [];
   const identity = rows[0];
-  return { ...identity, eligible: identity.eligible || (isAdminStagingEnabled() && identity.identity_verified && roleAssignments.length > 0), memberships, roleAssignments };
+  return { ...identity, eligible: scopedAccess ? identity.identity_verified && roleAssignments.length > 0
+    : identity.eligible || (isAdminStagingEnabled() && identity.identity_verified && roleAssignments.length > 0), memberships, roleAssignments, scopedAccess };
 }
 function usable(user: Account | null): user is Account {
-  return Boolean(user && user.active && user.eligible && user.memberships.length <= 64 && user.roleAssignments.length <= 8
-    && (user.memberships.length > 0 || (isAdminStagingEnabled() && user.roleAssignments.length > 0)));
+  return Boolean(user && user.active && user.eligible && user.memberships.length <= 64 && user.roleAssignments.length <= (user.scopedAccess ? 128 : 8)
+    && (user.memberships.length > 0 || ((isAdminStagingEnabled() || user.scopedAccess) && user.roleAssignments.length > 0)));
 }
 const fingerprint = (user: Account) => hashToken([
   ...user.memberships.map(m => `${m.id}:${m.revision}`),
   ...user.roleAssignments.map(role => `role:${role.id}:${role.role_code}:${role.revision}`),
+  ...(user.scopedAccess?.assignments.map(role => `scope:${role.id}:${role.scope_type}:${role.scope_id}:${role.organization_id}`) ?? []),
 ].join('|'));
 function publicUser(user: Account) {
   const base = { id: user.id, name: user.name, email: user.email, legacy_role: user.role,
     memberships: user.memberships.map(m => ({ id: m.id, school_id: m.school_id, company_id: m.company_id })),
     permissions: [] as string[], privileged_controls_available: false };
+  if (user.scopedAccess) return { ...base, ...user.scopedAccess, portal_roles: user.scopedAccess.assignments.map(role => role.role_code),
+    privileged_controls_available: user.scopedAccess.permissions.some(permission => permission.startsWith('admin.')) };
   if (!isAdminStagingEnabled()) return base;
   const portalRoles = user.roleAssignments.map(role => role.role_code);
   const permissions = permissionsForAdminRoles(portalRoles);
@@ -92,6 +105,16 @@ async function revokeAll(client: PoolClient, userId: number, reason: 'password_r
 }
 
 export async function checkSecuritySchema(): Promise<void> {
+  if (accountManagementEnabled()) {
+    accountReleaseConfig();
+    const client = await getPool().connect();
+    try {
+      await checkAccessSchema(client); await assertAccountRelease(client);
+      const { rows } = await client.query('SELECT sha256 FROM portal_accounts.schema_migrations WHERE version=$1', [accountManifest.version]);
+      if (rows.length !== 1 || rows[0].sha256 !== accountManifest.sha256) throw new Error('Account management schema is unavailable');
+    } finally { client.release(); }
+    return;
+  }
   if (isHostedPractice()) {
     const client = await getPool().connect();
     try { await checkHostedDatabase(client); } finally { client.release(); }
@@ -141,13 +164,17 @@ export async function checkAdminStagingSchema(): Promise<void> {
 export class PortalService {
   // Scoped feature operations run inside the same transaction and current
   // account/session validation as authentication, including revocation checks.
-  async withAuthenticatedSession<T>(raw: string, work: (client: PoolClient, user: ReturnType<typeof publicUser>) => Promise<T>): Promise<T> {
-    return this.withSession(raw, (client, context) => work(client, publicUser(context.account)));
+  async withAuthenticatedSession<T>(raw: string, work: (client: PoolClient, user: ReturnType<typeof publicUser>) => Promise<T>, exclusive = false): Promise<T> {
+    return this.withSession(raw, (client, context) => work(client, publicUser(context.account)), exclusive);
   }
 
   private async withSession<T>(raw: string, work: (client: PoolClient, context: Context) => Promise<T>, exclusive = false): Promise<T> {
     if (!validToken(raw)) throw new PortalError(401, 'Authentication required');
     const outcome = await transaction(async client => {
+      if (accountManagementEnabled()) {
+        await assertAccountRelease(client);
+        await client.query("SELECT set_config('epdg.session_token_hash',$1,true)", [hashToken(raw)]);
+      }
       const { rows: candidates } = await client.query<{user_id: number}>('SELECT user_id FROM portal_security.sessions WHERE token_hash=$1', [hashToken(raw)]);
       if (candidates.length !== 1) return { accepted: false as const };
       const user = await account(client, candidates[0].user_id, exclusive);
@@ -170,14 +197,16 @@ export class PortalService {
   }
 
   async login(email: string, password: string, previous: string | null) {
+    if (accountManagementEnabled()) accountReleaseConfig();
     const loginQuery = isAdminStagingEnabled()
-      ? "SELECT id,password FROM core.users WHERE lower(email)=$1 AND email LIKE '%@epdg.invalid' AND name LIKE 'SYNTHETIC %' LIMIT 2"
-      : 'SELECT id,password FROM core.users WHERE lower(email)=$1 LIMIT 2';
+      ? "SELECT id,password FROM core.users WHERE lower(btrim(email))=$1 AND email LIKE '%@epdg.invalid' AND name LIKE 'SYNTHETIC %' LIMIT 2"
+      : 'SELECT id,password FROM core.users WHERE lower(btrim(email))=$1 LIMIT 2';
     const { rows } = await getPool().query<{id: number; password: string}>(loginQuery, [email]);
     const candidate = rows.length === 1 ? rows[0] : null;
     const matches = await bcrypt.compare(password, candidate?.password ?? dummyPasswordHash);
     if (!candidate || !matches) throw new PortalError(401, 'Invalid email or password');
     return transaction(async client => {
+      if (accountManagementEnabled()) await assertAccountRelease(client);
       const user = await account(client, candidate.id, true);
       if (!usable(user) || user.password !== candidate.password) throw new PortalError(401, 'Invalid email or password');
       if (previous && validToken(previous)) await client.query("UPDATE portal_security.sessions SET revoked_at=clock_timestamp(),revoked_reason='rotated' WHERE token_hash=$1 AND user_id=$2 AND revoked_at IS NULL", [hashToken(previous), user.id]);
@@ -218,9 +247,14 @@ export class PortalService {
   }
 
   async requestRecovery(email: string): Promise<void> {
-    const { rows } = await getPool().query<{id: number}>('SELECT id FROM core.users WHERE lower(email)=$1 LIMIT 2', [email]);
+    if (accountManagementEnabled()) {
+      const client = await getPool().connect();
+      try { await assertAccountRelease(client, true); } finally { client.release(); }
+    }
+    const { rows } = await getPool().query<{id: number}>('SELECT id FROM core.users WHERE lower(btrim(email))=$1 LIMIT 2', [email]);
     if (rows.length !== 1) return;
     const delivery = await transaction(async client => {
+      if (accountManagementEnabled()) await assertAccountRelease(client, true);
       const user = await account(client, rows[0].id, true);
       if (!usable(user)) return null;
       await client.query('UPDATE portal_security.recovery_tokens SET revoked_at=clock_timestamp() WHERE user_id=$1 AND consumed_at IS NULL AND revoked_at IS NULL', [user.id]);
@@ -235,8 +269,16 @@ export class PortalService {
     // Tokens never enter logs. The hosted synthetic sink privately captures the
     // recovery message in its isolated DB; only the operator can read that sink.
     // Delivery failure is generic; the user can request another link.
-    setImmediate(() => { void deliverEmail({ from: process.env.SMTP_FROM ?? '', to: delivery.email,
+    setImmediate(() => { void (async () => {
+      const config = accountManagementEnabled() ? accountReleaseConfig() : null;
+      if (config) {
+        const client = await getPool().connect();
+        try { await assertAccountRelease(client, true); } finally { client.release(); }
+      }
+      return deliverEmail({ from: process.env.SMTP_FROM ?? '', to: delivery.email,
+      ...(config ? {replyTo: config.replyTo} : {}),
       subject: 'EPDG portal password recovery', html: `<p>A password reset was requested for your account.</p><p><a href="${link}">Reset password</a></p><p>This link expires in 20 minutes. If you did not request it, ignore this message.</p>` })
+    })()
       .then(result => { if (result.error) logger.error('Portal recovery delivery failed'); })
       .catch(() => logger.error('Portal recovery delivery failed')); });
   }
@@ -244,6 +286,7 @@ export class PortalService {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     if (!validToken(token) || !validPassword(newPassword)) throw new PortalError(400, 'Invalid recovery request');
     await transaction(async client => {
+      if (accountManagementEnabled()) await assertAccountRelease(client);
       const { rows } = await client.query<{user_id: number}>('SELECT user_id FROM portal_security.recovery_tokens WHERE token_hash=$1', [hashToken(token)]);
       if (rows.length !== 1) throw new PortalError(400, 'Invalid or expired recovery link');
       const user = await account(client, rows[0].user_id, true);

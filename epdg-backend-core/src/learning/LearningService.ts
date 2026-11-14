@@ -1,3 +1,4 @@
+import { learningSchema, learningEnvironment, portableLearning, configurePortableLearning, checkPortableLearningSchema, portableOnboarding } from './storage';
 import type { PoolClient } from 'pg';
 import { getPool } from '../db';
 import { PortalService } from '../security/PortalService';
@@ -25,6 +26,7 @@ const unavailable = () => new PortalError(503, 'Synthetic learner programs are u
 const iso = (value: Date | null) => value ? value.toISOString() : null;
 
 export async function checkLearningSchema(client: PoolClient): Promise<void> {
+  if (portableLearning()) { await checkPortableLearningSchema(client); return; }
   if (isHostedPractice()) { await checkHostedDatabase(client); return; }
   const { rows: [identity] } = await client.query(`SELECT current_database() AS db,current_user AS role,
     host(inet_server_addr()) AS host,inet_server_port() AS port,instance_id::text,
@@ -93,6 +95,11 @@ export async function checkLearningSchema(client: PoolClient): Promise<void> {
 }
 
 export async function checkLearningReadiness(): Promise<void> {
+  if (portableLearning()) {
+    const client = await getPool().connect();
+    try { await checkPortableLearningSchema(client); } finally { client.release(); }
+    return;
+  }
   requireSyntheticLearning();
   handoffEnabled();
   const client = await getPool().connect();
@@ -100,13 +107,19 @@ export async function checkLearningReadiness(): Promise<void> {
 }
 
 function requireLearner(user: Learner): void {
+  if (portableLearning()) {
+    if (!('portal_roles' in user) || !user.portal_roles.some(role => ['participant','intern_team_lead'].includes(role))) throw new PortalError(403, 'Learner programs are unavailable for this account');
+    return;
+  }
   if (user.legacy_role !== 'intern' || !['learner-a@epdg.invalid', 'learner-b@epdg.invalid'].includes(user.email) ||
       !user.name.startsWith('SYNTHETIC ')) throw new PortalError(403, 'Learner programs are unavailable for this account');
 }
 
 // Every query is bounded to the validated session's individual enrollment AND
 // its current institution membership. A role name alone never grants access.
-const enrollmentScope = `e.user_id=$1 AND e.active AND m.user_id=e.user_id AND m.active
+const enrollmentScope = () => portableLearning() ? `e.user_id=$1 AND e.active AND m.user_id=e.user_id AND m.active
+  AND m.id=ANY($2::uuid[]) AND m.company_id=e.organization_id AND p.organization_id=e.organization_id
+  AND portal_learning.enrollment_allowed(e.id)` : `e.user_id=$1 AND e.active AND m.user_id=e.user_id AND m.active
   AND m.id=ANY($2::uuid[]) AND m.school_id=e.school_id AND p.school_id=e.school_id
   AND synthetic_handoff.enrollment_allowed(e.id)`;
 
@@ -119,24 +132,24 @@ export const publicAttachment = (row: AttachmentMetadata) => ({ id: row.id, file
   size_bytes: row.size_bytes, sha256: row.sha256, uploaded_at: new Date(row.uploaded_at).toISOString() });
 async function scopedAssignment(client: PoolClient, user: Learner, id: string): Promise<Assignment> {
   const { rows: [item] } = await client.query<Assignment>(`SELECT i.id AS item_id,i.program_id,e.id AS enrollment_id
-    FROM synthetic_learning.items i JOIN synthetic_learning.programs p ON p.id=i.program_id
-    JOIN synthetic_learning.enrollments e ON e.program_id=p.id
+    FROM ${learningSchema()}.items i JOIN ${learningSchema()}.programs p ON p.id=i.program_id
+    JOIN ${learningSchema()}.enrollments e ON e.program_id=p.id
     JOIN portal_security.memberships m ON m.id=e.membership_id
-    WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='assignment'`, [user.id, user.memberships.map(m => m.id), id]);
+    WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='assignment'`, [user.id, user.memberships.map(m => m.id), id]);
   if (!item) throw new PortalError(404, 'Assignment not found');
   return item;
 }
 async function assignmentState(client: PoolClient, item: Assignment, user: Learner) {
   const args = [item.enrollment_id, item.item_id];
-  const { rows: [draft] } = await client.query<Draft>(`SELECT answer,revision,saved_at,attempt_number,previous_receipt_id FROM synthetic_learning.assignment_drafts
+  const { rows: [draft] } = await client.query<Draft>(`SELECT answer,revision,saved_at,attempt_number,previous_receipt_id FROM ${learningSchema()}.assignment_drafts
     WHERE enrollment_id=$1 AND item_id=$2`, args);
   const attempt = draft?.attempt_number ?? 1;
-  const { rows: [receipt] } = await client.query<Receipt>(`SELECT id,answer,revision,submitted_at,attachments,attempt_number,previous_receipt_id FROM synthetic_learning.assignment_receipts
+  const { rows: [receipt] } = await client.query<Receipt>(`SELECT id,answer,revision,submitted_at,attachments,attempt_number,previous_receipt_id FROM ${learningSchema()}.assignment_receipts
     WHERE enrollment_id=$1 AND item_id=$2 AND attempt_number=$3`, [...args, attempt]);
   const { rows: attachments } = await client.query<AttachmentRow>(`SELECT id,filename,media_type,size_bytes,sha256,uploaded_at,removed
-    FROM synthetic_learning.assignment_attachments WHERE enrollment_id=$1 AND item_id=$2 AND attempt_number=$3 ORDER BY uploaded_at,id`, [...args, attempt]);
-  const published = receipt ? (await client.query<{present: boolean}>('SELECT EXISTS(SELECT 1 FROM synthetic_learning.mentor_review_feedback WHERE receipt_id=$1) AS present', [receipt.id])).rows[0].present : false;
-  return { success: true as const, environment: 'synthetic-local' as const, learner_id: user.id,
+    FROM ${learningSchema()}.assignment_attachments WHERE enrollment_id=$1 AND item_id=$2 AND attempt_number=$3 ORDER BY uploaded_at,id`, [...args, attempt]);
+  const published = receipt ? (await client.query<{present: boolean}>(`SELECT EXISTS(SELECT 1 FROM ${learningSchema()}.mentor_review_feedback WHERE receipt_id=$1) AS present`, [receipt.id])).rows[0].present : false;
+  return { success: true as const, environment: learningEnvironment(), learner_id: user.id,
     submission: { item_id: item.item_id, program_id: item.program_id,
       state: receipt ? 'submitted' as const : draft ? 'draft' as const : 'not_started' as const,
       answer: receipt?.answer ?? draft?.answer ?? '', revision: receipt?.revision ?? draft?.revision ?? 0,
@@ -158,20 +171,20 @@ const revisionConflict = () => new PortalError(409, 'Assignment changed; reload 
 async function loadPrograms(client: PoolClient, user: Learner) {
   const memberships = user.memberships.map(m => m.id);
   const { rows: programs } = await client.query<ProgramRow>(`SELECT p.id,e.id AS enrollment_id,p.title,p.summary,p.starts_at,p.ends_at
-    FROM synthetic_learning.enrollments e
-    JOIN synthetic_learning.programs p ON p.id=e.program_id
+    FROM ${learningSchema()}.enrollments e
+    JOIN ${learningSchema()}.programs p ON p.id=e.program_id
     JOIN portal_security.memberships m ON m.id=e.membership_id
-    WHERE ${enrollmentScope} ORDER BY p.starts_at,p.title,p.id`, [user.id, memberships]);
+    WHERE ${enrollmentScope()} ORDER BY p.starts_at,p.title,p.id`, [user.id, memberships]);
   const { rows: items } = await client.query<ItemRow>(`SELECT i.id,i.program_id,i.title,i.kind,i.description,i.content,i.due_at,c.completed_at,
     d.revision AS draft_revision,r.revision AS submitted_revision
-    FROM synthetic_learning.enrollments e
-    JOIN synthetic_learning.programs p ON p.id=e.program_id
+    FROM ${learningSchema()}.enrollments e
+    JOIN ${learningSchema()}.programs p ON p.id=e.program_id
     JOIN portal_security.memberships m ON m.id=e.membership_id
-    JOIN synthetic_learning.items i ON i.program_id=p.id
-    LEFT JOIN synthetic_learning.completions c ON c.enrollment_id=e.id AND c.item_id=i.id AND c.program_id=p.id
-    LEFT JOIN synthetic_learning.assignment_drafts d ON d.enrollment_id=e.id AND d.item_id=i.id AND d.program_id=p.id
-    LEFT JOIN synthetic_learning.assignment_receipts r ON r.enrollment_id=e.id AND r.item_id=i.id AND r.program_id=p.id AND r.attempt_number=coalesce(d.attempt_number,1)
-    WHERE ${enrollmentScope} ORDER BY p.id,i.position,i.id`, [user.id, memberships]);
+    JOIN ${learningSchema()}.items i ON i.program_id=p.id
+    LEFT JOIN ${learningSchema()}.completions c ON c.enrollment_id=e.id AND c.item_id=i.id AND c.program_id=p.id
+    LEFT JOIN ${learningSchema()}.assignment_drafts d ON d.enrollment_id=e.id AND d.item_id=i.id AND d.program_id=p.id
+    LEFT JOIN ${learningSchema()}.assignment_receipts r ON r.enrollment_id=e.id AND r.item_id=i.id AND r.program_id=p.id AND r.attempt_number=coalesce(d.attempt_number,1)
+    WHERE ${enrollmentScope()} ORDER BY p.id,i.position,i.id`, [user.id, memberships]);
   const mapped = programs.map(program => {
     const content = items.filter(item => item.program_id === program.id).map(item => ({
       id: item.id, title: item.title, kind: item.kind, description: item.description, content: item.content,
@@ -193,14 +206,17 @@ export class LearningService {
   constructor(private readonly portal = new PortalService()) {}
 
   private async withLearner<T>(raw: string, work: (client: PoolClient, user: Learner) => Promise<T>): Promise<T> {
-    requireSyntheticLearning();
+    if (!portableLearning()) requireSyntheticLearning();
     return this.portal.withAuthenticatedSession(raw, async (client, user) => {
-      requireLearner(user); await configureHandoffTransaction(client);
-      await checkLearningSchema(client); await checkHandoffSchema(client); return work(client, user);
+      requireLearner(user);
+      if (portableLearning()) await configurePortableLearning(client, raw);
+      else { await configureHandoffTransaction(client); await checkLearningSchema(client); await checkHandoffSchema(client); }
+      return work(client, user);
     });
   }
 
   async onboarding(raw: string) {
+    if (portableLearning()) return this.withLearner(raw, (client, user) => portableOnboarding(client, user.id));
     const config = handoffConfig(); config.key.fill(0);
     return this.withLearner(raw, (client, user) => learnerOnboarding(client, user.id, user.memberships.map(m => m.id)));
   }
@@ -210,32 +226,32 @@ export class LearningService {
       const { programs, memberships } = await loadPrograms(client, user);
       const { rows: feedback } = await client.query<{ id: string; program_id: string; program_title: string; title: string;
         comment: string; created_at: Date; mentor_label: string }>(`SELECT f.id,p.id AS program_id,p.title AS program_title,
-        f.title,f.comment,f.created_at,f.mentor_label FROM synthetic_learning.feedback f
-        JOIN synthetic_learning.enrollments e ON e.id=f.enrollment_id
-        JOIN synthetic_learning.programs p ON p.id=e.program_id
+        f.title,f.comment,f.created_at,f.mentor_label FROM ${learningSchema()}.feedback f
+        JOIN ${learningSchema()}.enrollments e ON e.id=f.enrollment_id
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id
         JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} ORDER BY f.created_at DESC,f.id LIMIT 20`, [user.id, memberships]);
+        WHERE ${enrollmentScope()} ORDER BY f.created_at DESC,f.id LIMIT 20`, [user.id, memberships]);
       // Published feedback is historical to the learner's own receipt. Later
       // mentor revocation removes future mentor access, not published history.
       const { rows: publishedFeedback } = await client.query<typeof feedback[number]>(`SELECT f.id,p.id AS program_id,p.title AS program_title,
         'Assignment feedback: '||i.title AS title,f.comment,f.published_at AS created_at,f.mentor_label
-        FROM synthetic_learning.mentor_review_feedback f JOIN synthetic_learning.assignment_receipts r ON r.id=f.receipt_id
-        JOIN synthetic_learning.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        JOIN synthetic_learning.items i ON i.id=r.item_id AND i.program_id=p.id
-        WHERE ${enrollmentScope} ORDER BY f.published_at DESC,f.id LIMIT 20`, [user.id, memberships]);
+        FROM ${learningSchema()}.mentor_review_feedback f JOIN ${learningSchema()}.assignment_receipts r ON r.id=f.receipt_id
+        JOIN ${learningSchema()}.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        JOIN ${learningSchema()}.items i ON i.id=r.item_id AND i.program_id=p.id
+        WHERE ${enrollmentScope()} ORDER BY f.published_at DESC,f.id LIMIT 20`, [user.id, memberships]);
       const { rows: resources } = await client.query<{ id: string; program_id: string; title: string; description: string; body: string }>(`SELECT r.id,r.program_id,r.title,r.description,r.body
-        FROM synthetic_learning.resources r JOIN synthetic_learning.programs p ON p.id=r.program_id
-        JOIN synthetic_learning.enrollments e ON e.program_id=p.id
+        FROM ${learningSchema()}.resources r JOIN ${learningSchema()}.programs p ON p.id=r.program_id
+        JOIN ${learningSchema()}.enrollments e ON e.program_id=p.id
         JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} ORDER BY p.title,r.title,r.id LIMIT 30`, [user.id, memberships]);
+        WHERE ${enrollmentScope()} ORDER BY p.title,r.title,r.id LIMIT 30`, [user.id, memberships]);
       const completed = programs.reduce((sum, p) => sum + p.completed_items, 0);
       const total = programs.reduce((sum, p) => sum + p.total_items, 0);
       const upcoming = programs.flatMap(program => program.items.filter(item => item.status !== 'completed' && item.status !== 'submitted').map(item => ({
         id: item.id, program_id: program.id, program_title: program.title, title: item.title,
         kind: item.kind, due_at: item.due_at, status: item.status,
       }))).sort((a, b) => (a.due_at ?? '9999').localeCompare(b.due_at ?? '9999') || a.id.localeCompare(b.id)).slice(0, 12);
-      return { success: true as const, environment: 'synthetic-local' as const, learner_id: user.id, generated_at: new Date().toISOString(),
+      return { success: true as const, environment: learningEnvironment(), learner_id: user.id, generated_at: new Date().toISOString(),
         summary: { active_programs: programs.filter(p => p.status === 'active').length, completed_items: completed,
           total_items: total, progress_percent: total ? Math.round(completed * 100 / total) : 0 },
         programs: programs.map(({ items: _items, ...program }) => program), upcoming,
@@ -250,7 +266,7 @@ export class LearningService {
       const { programs } = await loadPrograms(client, user);
       const program = programs.find(p => p.id === id);
       if (!program) throw new PortalError(404, 'Program or lesson not found');
-      return { success: true as const, environment: 'synthetic-local' as const, learner_id: user.id, program };
+      return { success: true as const, environment: learningEnvironment(), learner_id: user.id, program };
     });
   }
 
@@ -264,18 +280,18 @@ export class LearningService {
     return this.withLearner(raw, async (client, user) => {
       const item = await lockAssignment(client, user, id);
       const args = [user.id, user.memberships.map(m => m.id), item.item_id];
-      const { rows: [receipt] } = await client.query<{id: string}>(`SELECT r.id FROM synthetic_learning.assignment_receipts r
-        JOIN synthetic_learning.assignment_drafts d ON d.enrollment_id=r.enrollment_id AND d.item_id=r.item_id AND d.attempt_number=r.attempt_number
-        JOIN synthetic_learning.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND r.item_id=$3`, args);
+      const { rows: [receipt] } = await client.query<{id: string}>(`SELECT r.id FROM ${learningSchema()}.assignment_receipts r
+        JOIN ${learningSchema()}.assignment_drafts d ON d.enrollment_id=r.enrollment_id AND d.item_id=r.item_id AND d.attempt_number=r.attempt_number
+        JOIN ${learningSchema()}.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        WHERE ${enrollmentScope()} AND r.item_id=$3`, args);
       const { rows: feedback } = await client.query<{id: string; comment: string; revision: number; published_at: Date; mentor_label: string}>(`SELECT f.id,f.comment,f.revision,f.published_at,f.mentor_label
-        FROM synthetic_learning.mentor_review_feedback f JOIN synthetic_learning.assignment_receipts r ON r.id=f.receipt_id
-        JOIN synthetic_learning.assignment_drafts d ON d.enrollment_id=r.enrollment_id AND d.item_id=r.item_id AND d.attempt_number=r.attempt_number
-        JOIN synthetic_learning.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND r.item_id=$3 ORDER BY f.published_at,f.id`, args);
-      return { success: true as const, environment: 'synthetic-local' as const, learner_id: user.id,
+        FROM ${learningSchema()}.mentor_review_feedback f JOIN ${learningSchema()}.assignment_receipts r ON r.id=f.receipt_id
+        JOIN ${learningSchema()}.assignment_drafts d ON d.enrollment_id=r.enrollment_id AND d.item_id=r.item_id AND d.attempt_number=r.attempt_number
+        JOIN ${learningSchema()}.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        WHERE ${enrollmentScope()} AND r.item_id=$3 ORDER BY f.published_at,f.id`, args);
+      return { success: true as const, environment: learningEnvironment(), learner_id: user.id,
         item_id: item.item_id, program_id: item.program_id, receipt_id: receipt?.id ?? null,
         feedback: feedback.map(f => ({ ...f, published_at: f.published_at.toISOString() })) };
     });
@@ -288,20 +304,20 @@ export class LearningService {
     return this.withLearner(raw, async (client, user) => {
       const item = await lockAssignment(client, user, id); const current = await assignmentState(client, item, user);
       if (current.submission.state === 'draft' && current.submission.previous_receipt_id === receiptId && current.submission.revision === expected + 1) {
-        const prior = (await client.query<{revision: number}>('SELECT revision FROM synthetic_learning.assignment_receipts WHERE id=$1 AND enrollment_id=$2 AND item_id=$3',
+        const prior = (await client.query<{revision: number}>(`SELECT revision FROM ${learningSchema()}.assignment_receipts WHERE id=$1 AND enrollment_id=$2 AND item_id=$3`,
           [receiptId, item.enrollment_id, item.item_id])).rows[0];
         if (prior?.revision === expected) return current;
       }
       if (current.submission.receipt?.id !== receiptId || current.submission.revision !== expected || !current.submission.can_start_revision) {
         throw new PortalError(409, 'A new revision requires published feedback on the latest submission and an available attempt');
       }
-      const result = await client.query(`UPDATE synthetic_learning.assignment_drafts d SET attempt_number=attempt_number+1,
+      const result = await client.query(`UPDATE ${learningSchema()}.assignment_drafts d SET attempt_number=attempt_number+1,
         previous_receipt_id=$4,revision=revision+1 WHERE d.item_id=$3 AND d.revision=$5 AND d.enrollment_id IN (
-          SELECT e.id FROM synthetic_learning.enrollments e JOIN synthetic_learning.programs p ON p.id=e.program_id
-          JOIN portal_security.memberships m ON m.id=e.membership_id WHERE ${enrollmentScope})
-        AND EXISTS(SELECT 1 FROM synthetic_learning.assignment_receipts r WHERE r.id=$4 AND r.enrollment_id=d.enrollment_id
+          SELECT e.id FROM ${learningSchema()}.enrollments e JOIN ${learningSchema()}.programs p ON p.id=e.program_id
+          JOIN portal_security.memberships m ON m.id=e.membership_id WHERE ${enrollmentScope()})
+        AND EXISTS(SELECT 1 FROM ${learningSchema()}.assignment_receipts r WHERE r.id=$4 AND r.enrollment_id=d.enrollment_id
           AND r.item_id=d.item_id AND r.attempt_number=d.attempt_number
-          AND EXISTS(SELECT 1 FROM synthetic_learning.mentor_review_feedback f WHERE f.receipt_id=r.id))`,
+          AND EXISTS(SELECT 1 FROM ${learningSchema()}.mentor_review_feedback f WHERE f.receipt_id=r.id))`,
       [user.id, user.memberships.map(m => m.id), item.item_id, receiptId, expected]);
       if (result.rowCount !== 1) throw new PortalError(404, 'Assignment not found');
       return assignmentState(client, item, user);
@@ -313,12 +329,12 @@ export class LearningService {
     return this.withLearner(raw, async (client, user) => {
       const item = await lockAssignment(client, user, id);
       const { rows } = await client.query<Receipt>(`SELECT r.id,r.answer,r.revision,r.submitted_at,r.attachments,r.attempt_number,r.previous_receipt_id
-        FROM synthetic_learning.assignment_receipts r JOIN synthetic_learning.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND r.item_id=$3 ORDER BY r.attempt_number LIMIT 5`, [user.id, user.memberships.map(m => m.id), item.item_id]);
+        FROM ${learningSchema()}.assignment_receipts r JOIN ${learningSchema()}.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        WHERE ${enrollmentScope()} AND r.item_id=$3 ORDER BY r.attempt_number LIMIT 5`, [user.id, user.memberships.map(m => m.id), item.item_id]);
       const { rows: feedback } = await client.query<{receipt_id: string; id: string; comment: string; revision: number; published_at: Date; mentor_label: string}>(`SELECT receipt_id,id,comment,revision,published_at,mentor_label
-        FROM synthetic_learning.mentor_review_feedback WHERE receipt_id=ANY($1::uuid[]) ORDER BY published_at,id`, [rows.map(r => r.id)]);
-      return { success: true as const, environment: 'synthetic-local' as const, learner_id: user.id, item_id: item.item_id, program_id: item.program_id,
+        FROM ${learningSchema()}.mentor_review_feedback WHERE receipt_id=ANY($1::uuid[]) ORDER BY published_at,id`, [rows.map(r => r.id)]);
+      return { success: true as const, environment: learningEnvironment(), learner_id: user.id, item_id: item.item_id, program_id: item.program_id,
         attempts: rows.map(r => ({ receipt_id: r.id, attempt_number: r.attempt_number, answer: r.answer,
           attachments: r.attachments.map(publicAttachment), submitted_at: r.submitted_at.toISOString(), submission_revision: r.revision,
           published_feedback: feedback.filter(f => f.receipt_id === r.id).map(({ receipt_id: _receiptId, ...f }) => ({ ...f, published_at: f.published_at.toISOString() })) })) };
@@ -329,15 +345,15 @@ export class LearningService {
     const id = learningIdentifier(identifier); const receiptId = learningIdentifier(inputReceipt); const attachmentId = learningIdentifier(inputAttachment);
     return this.withLearner(raw, async (client, user) => {
       const item = await lockAssignment(client, user, id);
-      const { rows: [receipt] } = await client.query<Receipt>(`SELECT r.id,r.attempt_number,r.attachments FROM synthetic_learning.assignment_receipts r
-        JOIN synthetic_learning.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND r.item_id=$3 AND r.id=$4`, [user.id, user.memberships.map(m => m.id), item.item_id, receiptId]);
+      const { rows: [receipt] } = await client.query<Receipt>(`SELECT r.id,r.attempt_number,r.attachments FROM ${learningSchema()}.assignment_receipts r
+        JOIN ${learningSchema()}.enrollments e ON e.id=r.enrollment_id AND e.program_id=r.program_id
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        WHERE ${enrollmentScope()} AND r.item_id=$3 AND r.id=$4`, [user.id, user.memberships.map(m => m.id), item.item_id, receiptId]);
       const metadata = receipt?.attachments.find(a => a.id === attachmentId);
       if (!receipt || !metadata) throw new PortalError(404, 'Attachment not found');
-      const { rows: [file] } = await client.query<{filename: string; bytes: Buffer}>(`SELECT a.filename,a.bytes FROM synthetic_learning.assignment_attachments a
-        JOIN synthetic_learning.enrollments e ON e.id=a.enrollment_id JOIN synthetic_learning.programs p ON p.id=e.program_id
-        JOIN portal_security.memberships m ON m.id=e.membership_id WHERE ${enrollmentScope} AND a.item_id=$3 AND a.id=$4
+      const { rows: [file] } = await client.query<{filename: string; bytes: Buffer}>(`SELECT a.filename,a.bytes FROM ${learningSchema()}.assignment_attachments a
+        JOIN ${learningSchema()}.enrollments e ON e.id=a.enrollment_id JOIN ${learningSchema()}.programs p ON p.id=e.program_id
+        JOIN portal_security.memberships m ON m.id=e.membership_id WHERE ${enrollmentScope()} AND a.item_id=$3 AND a.id=$4
         AND a.attempt_number=$5 AND NOT a.removed AND a.sha256=$6 AND a.size_bytes=$7`,
       [user.id, user.memberships.map(m => m.id), item.item_id, attachmentId, receipt.attempt_number, metadata.sha256, metadata.size_bytes]);
       if (!file) throw new PortalError(404, 'Attachment not found'); return file;
@@ -373,10 +389,10 @@ export class LearningService {
   async uploadAttachment(raw: string, identifier: unknown, inputRevision: unknown, filename: string, mediaType: string, bytes: Buffer) {
     const upload = validateAttachment(filename, mediaType, bytes);
     return this.withEditableAttachment(raw, identifier, inputRevision, async (client, item, user) => {
-      const result = await client.query(`INSERT INTO synthetic_learning.assignment_attachments(enrollment_id,program_id,item_id,filename,media_type,bytes)
-        SELECT e.id,p.id,i.id,$4,$5,$6 FROM synthetic_learning.enrollments e
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        JOIN synthetic_learning.items i ON i.program_id=p.id WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='assignment'`,
+      const result = await client.query(`INSERT INTO ${learningSchema()}.assignment_attachments(enrollment_id,program_id,item_id,filename,media_type,bytes)
+        SELECT e.id,p.id,i.id,$4,$5,$6 FROM ${learningSchema()}.enrollments e
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        JOIN ${learningSchema()}.items i ON i.program_id=p.id WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='assignment'`,
       [user.id, user.memberships.map(m => m.id), item.item_id, upload.filename, upload.mediaType, upload.bytes]);
       if (result.rowCount !== 1) throw new PortalError(404, 'Assignment not found');
     });
@@ -385,10 +401,10 @@ export class LearningService {
   async setAttachmentRemoved(raw: string, identifier: unknown, attachmentIdentifier: unknown, inputRevision: unknown, removed: boolean) {
     const attachmentId = learningIdentifier(attachmentIdentifier);
     return this.withEditableAttachment(raw, identifier, inputRevision, async (client, item, user) => {
-      const result = await client.query(`UPDATE synthetic_learning.assignment_attachments a SET removed=$4
-        WHERE a.id=$5 AND a.item_id=$3 AND a.removed<>$4 AND a.attempt_number=(SELECT attempt_number FROM synthetic_learning.assignment_drafts d WHERE d.enrollment_id=a.enrollment_id AND d.item_id=a.item_id) AND a.enrollment_id IN (
-          SELECT e.id FROM synthetic_learning.enrollments e JOIN synthetic_learning.programs p ON p.id=e.program_id
-          JOIN portal_security.memberships m ON m.id=e.membership_id WHERE ${enrollmentScope})`,
+      const result = await client.query(`UPDATE ${learningSchema()}.assignment_attachments a SET removed=$4
+        WHERE a.id=$5 AND a.item_id=$3 AND a.removed<>$4 AND a.attempt_number=(SELECT attempt_number FROM ${learningSchema()}.assignment_drafts d WHERE d.enrollment_id=a.enrollment_id AND d.item_id=a.item_id) AND a.enrollment_id IN (
+          SELECT e.id FROM ${learningSchema()}.enrollments e JOIN ${learningSchema()}.programs p ON p.id=e.program_id
+          JOIN portal_security.memberships m ON m.id=e.membership_id WHERE ${enrollmentScope()})`,
       [user.id, user.memberships.map(m => m.id), item.item_id, removed, attachmentId]);
       if (result.rowCount !== 1) throw new PortalError(404, 'Active attachment not found');
     });
@@ -400,10 +416,10 @@ export class LearningService {
       const item = await lockAssignment(client, user, id); const current = (await assignmentState(client, item, user)).submission;
       const metadata = current.attachments.find(a => a.id === attachmentId);
       if (!metadata) throw new PortalError(404, 'Attachment not found');
-      const { rows: [file] } = await client.query<{filename: string; bytes: Buffer}>(`SELECT a.filename,a.bytes FROM synthetic_learning.assignment_attachments a
-        JOIN synthetic_learning.enrollments e ON e.id=a.enrollment_id JOIN synthetic_learning.programs p ON p.id=e.program_id
+      const { rows: [file] } = await client.query<{filename: string; bytes: Buffer}>(`SELECT a.filename,a.bytes FROM ${learningSchema()}.assignment_attachments a
+        JOIN ${learningSchema()}.enrollments e ON e.id=a.enrollment_id JOIN ${learningSchema()}.programs p ON p.id=e.program_id
         JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND a.item_id=$3 AND a.id=$4 AND NOT a.removed AND a.sha256=$5 AND a.size_bytes=$6 AND a.attempt_number=$7`,
+        WHERE ${enrollmentScope()} AND a.item_id=$3 AND a.id=$4 AND NOT a.removed AND a.sha256=$5 AND a.size_bytes=$6 AND a.attempt_number=$7`,
       [user.id, user.memberships.map(m => m.id), item.item_id, attachmentId, metadata.sha256, metadata.size_bytes, current.attempt_number]);
       if (!file) throw new PortalError(404, 'Attachment not found');
       return file;
@@ -417,15 +433,15 @@ export class LearningService {
       const current = await assignmentState(client, item, user);
       if (current.submission.state === 'submitted' || current.submission.revision !== expected || expected === 2147483647) throw revisionConflict();
       const args = [user.id, user.memberships.map(m => m.id), id, answer, expected + 1];
-      const scope = `SELECT e.id FROM synthetic_learning.enrollments e JOIN synthetic_learning.programs p ON p.id=e.program_id
-        JOIN portal_security.memberships m ON m.id=e.membership_id JOIN synthetic_learning.items i ON i.program_id=p.id
-        WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='assignment'`;
+      const scope = `SELECT e.id FROM ${learningSchema()}.enrollments e JOIN ${learningSchema()}.programs p ON p.id=e.program_id
+        JOIN portal_security.memberships m ON m.id=e.membership_id JOIN ${learningSchema()}.items i ON i.program_id=p.id
+        WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='assignment'`;
       const result = expected === 0
-        ? await client.query(`INSERT INTO synthetic_learning.assignment_drafts(enrollment_id,program_id,item_id,answer,revision)
-          SELECT e.id,p.id,i.id,$4,$5 FROM synthetic_learning.enrollments e
-          JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-          JOIN synthetic_learning.items i ON i.program_id=p.id WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='assignment'`, args)
-        : await client.query(`UPDATE synthetic_learning.assignment_drafts SET answer=$4,revision=$5
+        ? await client.query(`INSERT INTO ${learningSchema()}.assignment_drafts(enrollment_id,program_id,item_id,answer,revision)
+          SELECT e.id,p.id,i.id,$4,$5 FROM ${learningSchema()}.enrollments e
+          JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+          JOIN ${learningSchema()}.items i ON i.program_id=p.id WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='assignment'`, args)
+        : await client.query(`UPDATE ${learningSchema()}.assignment_drafts SET answer=$4,revision=$5
           WHERE enrollment_id IN (${scope}) AND item_id=$3 AND revision=$6`, [...args, expected]);
       if (result.rowCount !== 1) throw new PortalError(404, 'Assignment not found');
       return assignmentState(client, item, user);
@@ -440,12 +456,12 @@ export class LearningService {
       if (current.submission.revision !== expected) throw revisionConflict();
       if (current.submission.state === 'submitted') return current;
       if (current.submission.state !== 'draft' || !current.submission.answer.trim()) throw new PortalError(400, 'Save a nonblank draft before submitting');
-      const result = await client.query(`INSERT INTO synthetic_learning.assignment_receipts(enrollment_id,program_id,item_id,answer,revision)
-        SELECT e.id,p.id,i.id,d.answer,d.revision FROM synthetic_learning.enrollments e
-        JOIN synthetic_learning.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
-        JOIN synthetic_learning.items i ON i.program_id=p.id
-        JOIN synthetic_learning.assignment_drafts d ON d.enrollment_id=e.id AND d.item_id=i.id AND d.program_id=p.id
-        WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='assignment' AND d.revision=$4`,
+      const result = await client.query(`INSERT INTO ${learningSchema()}.assignment_receipts(enrollment_id,program_id,item_id,answer,revision)
+        SELECT e.id,p.id,i.id,d.answer,d.revision FROM ${learningSchema()}.enrollments e
+        JOIN ${learningSchema()}.programs p ON p.id=e.program_id JOIN portal_security.memberships m ON m.id=e.membership_id
+        JOIN ${learningSchema()}.items i ON i.program_id=p.id
+        JOIN ${learningSchema()}.assignment_drafts d ON d.enrollment_id=e.id AND d.item_id=i.id AND d.program_id=p.id
+        WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='assignment' AND d.revision=$4`,
       [user.id, user.memberships.map(m => m.id), id, expected]);
       if (result.rowCount !== 1) throw new PortalError(404, 'Assignment not found');
       return assignmentState(client, item, user);
@@ -456,29 +472,29 @@ export class LearningService {
     const id = learningIdentifier(identifier);
     return this.withLearner(raw, async (client, user) => {
       const { rows: [item] } = await client.query<{ id: string; kind: string; program_id: string; enrollment_id: string }>(`SELECT i.id,i.kind,i.program_id,e.id AS enrollment_id
-        FROM synthetic_learning.items i JOIN synthetic_learning.programs p ON p.id=i.program_id
-        JOIN synthetic_learning.enrollments e ON e.program_id=p.id
+        FROM ${learningSchema()}.items i JOIN ${learningSchema()}.programs p ON p.id=i.program_id
+        JOIN ${learningSchema()}.enrollments e ON e.program_id=p.id
         JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND i.id=$3`, [user.id, user.memberships.map(m => m.id), id]);
+        WHERE ${enrollmentScope()} AND i.id=$3`, [user.id, user.memberships.map(m => m.id), id]);
       if (!item) throw new PortalError(404, 'Program or lesson not found');
       if (item.kind !== 'lesson') throw new PortalError(403, 'Assignments use the separate submission flow');
       // Recheck current enrollment/membership in the write statement as well as
       // the earlier lesson lookup. An operator's concurrent deactivation must
       // never turn a stale lookup into a new completion.
       const parameters = [user.id, user.memberships.map(m => m.id), item.id];
-      const { rows: inserted } = await client.query<{completed_at: Date}>(`INSERT INTO synthetic_learning.completions(enrollment_id,program_id,item_id)
-        SELECT e.id,p.id,i.id FROM synthetic_learning.items i
-        JOIN synthetic_learning.programs p ON p.id=i.program_id
-        JOIN synthetic_learning.enrollments e ON e.program_id=p.id
+      const { rows: inserted } = await client.query<{completed_at: Date}>(`INSERT INTO ${learningSchema()}.completions(enrollment_id,program_id,item_id)
+        SELECT e.id,p.id,i.id FROM ${learningSchema()}.items i
+        JOIN ${learningSchema()}.programs p ON p.id=i.program_id
+        JOIN ${learningSchema()}.enrollments e ON e.program_id=p.id
         JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='lesson'
+        WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='lesson'
         ON CONFLICT(enrollment_id,item_id) DO NOTHING RETURNING completed_at`, parameters);
       const completed = inserted[0] ?? (await client.query<{completed_at: Date}>(`SELECT c.completed_at
-        FROM synthetic_learning.completions c JOIN synthetic_learning.items i ON i.id=c.item_id AND i.program_id=c.program_id
-        JOIN synthetic_learning.programs p ON p.id=i.program_id
-        JOIN synthetic_learning.enrollments e ON e.id=c.enrollment_id AND e.program_id=p.id
+        FROM ${learningSchema()}.completions c JOIN ${learningSchema()}.items i ON i.id=c.item_id AND i.program_id=c.program_id
+        JOIN ${learningSchema()}.programs p ON p.id=i.program_id
+        JOIN ${learningSchema()}.enrollments e ON e.id=c.enrollment_id AND e.program_id=p.id
         JOIN portal_security.memberships m ON m.id=e.membership_id
-        WHERE ${enrollmentScope} AND i.id=$3 AND i.kind='lesson'`, parameters)).rows[0];
+        WHERE ${enrollmentScope()} AND i.id=$3 AND i.kind='lesson'`, parameters)).rows[0];
       if (!completed) throw new PortalError(404, 'Program or lesson not found');
       return { success: true as const, item_id: item.id, completed_at: completed.completed_at.toISOString(), already_completed: inserted.length === 0 };
     });

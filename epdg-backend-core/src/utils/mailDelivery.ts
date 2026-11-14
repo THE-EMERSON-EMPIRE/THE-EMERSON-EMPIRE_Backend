@@ -5,14 +5,15 @@ import { validateSyntheticEnvironment } from '../config/synthetic';
 import { isHostedPractice, validateHostedPracticeEnvironment } from '../hosted-practice/profile';
 import { getPool } from '../db';
 
-interface EmailMessage {
+export interface EmailMessage {
   from: string;
   to: string | string[];
   subject: string;
   html: string;
+  replyTo?: string;
 }
 
-export async function deliverEmail(message: EmailMessage): Promise<{ error: { message: string } | null }> {
+export async function deliverEmail(message: EmailMessage, options?: { idempotencyKey: string }): Promise<{ error: { message: string } | null; providerId?: string }> {
   if (isHostedPractice()) {
     validateHostedPracticeEnvironment();
     const recipients = Array.isArray(message.to) ? message.to : [message.to];
@@ -35,11 +36,12 @@ export async function deliverEmail(message: EmailMessage): Promise<{ error: { me
       connectionTimeout: 3000, socketTimeout: 5000,
       disableFileAccess: true, disableUrlAccess: true,
     });
-    await transport.sendMail(message);
-    return { error: null };
+    const result = await transport.sendMail(message);
+    return { error: null, providerId: result.messageId };
   }
   if (process.env.MAIL_DELIVERY_MODE && process.env.MAIL_DELIVERY_MODE !== 'resend') {
     throw new Error('Mailpit delivery requires the isolated local test runner');
   }
-  return new Resend(requireEnvironmentVariable('RESEND_API_KEY')).emails.send(message);
+  const result = await new Resend(requireEnvironmentVariable('RESEND_API_KEY')).emails.send(message, options);
+  return { error: result.error, ...(result.data?.id ? { providerId: result.data.id } : {}) };
 }

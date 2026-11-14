@@ -8,3 +8,6 @@ supabase/migrations/*_epdg_supabase_*.sql text eol=lf
 epdg-backend-core/admin-migrations/*.sql text eol=lf
 epdg-backend-core/neon-admin-staging-migrations/*.sql text eol=lf
 epdg-backend-core/invitation-review-migrations/*.sql text eol=lf
+epdg-backend-core/access-migrations/*.sql text eol=lf
+epdg-backend-core/account-migrations/*.sql text eol=lf
+epdg-backend-core/portable-learning-migrations/*.sql text eol=lf

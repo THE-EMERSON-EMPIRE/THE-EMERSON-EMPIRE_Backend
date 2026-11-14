@@ -37,7 +37,7 @@ class Client {
       this.local[match[1]] = 1; return { rows: [] };
     }
     if (sql.startsWith('SELECT user_id FROM portal_security.sessions')) return { rows: [{ user_id: 42 }] };
-    if (sql.includes('cu.id,cu.name,cu.email,cu.password')) return { rows: [{ id: 42, name: 'SYNTHETIC Mentor A',
+    if (sql.includes('FROM portal_security.account_states st JOIN core.users cu')) return { rows: [{ id: 42, name: 'SYNTHETIC Mentor A',
       email: 'school-a@epdg.invalid', password: 'test-only-hash', role: 'school', active: true, eligible: true, revision: '1' }] };
     if (sql.includes('FROM portal_security.memberships m WHERE')) return { rows: [{ id: membership, revision: '1', school_id: 11, company_id: null }] };
     if (sql.startsWith('SELECT *,')) return { rows: [{ id: receipt, user_id: 42, revoked_at: null, current: true,
