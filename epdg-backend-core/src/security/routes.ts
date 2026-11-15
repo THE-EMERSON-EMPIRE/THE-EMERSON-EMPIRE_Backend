@@ -19,9 +19,8 @@ function body(req: Request, keys: string[]): Record<string, unknown> {
   }
   return value as Record<string, unknown>;
 }
-export function createPortalRouter(): Router {
+export function createPortalRouter(service = new PortalService()): Router {
   const router = Router();
-  const service = new PortalService();
   const learning = new LearningService(service);
   const mentor = new MentorReviewService(service);
   // This parser is invoked only after current session/CSRF and synthetic scope

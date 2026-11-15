@@ -1,0 +1,61 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const bootstrap=require('../account-release/founder-bootstrap.cjs');
+const core=path.resolve(__dirname,'../..');
+async function prepareFounder({operator,config}){
+ let checks=0;const check=(v,m)=>{assert.ok(v,m);checks++;};
+ const target={target_id:'SYNTHETIC-phase-two-target',approval_reference:'SYNTHETIC-release-approval',host:'127.0.0.1',port:55432,database:'epdg_synthetic',migrator_role:'epdg_review_operator',runtime_role:'epdg_synthetic_app',ssl:false,synthetic_only:true,
+  backend_commit:require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{cwd:core,encoding:'utf8'}).trim(),portal_origin:'http://127.0.0.1:58080',sender:'EPDG Synthetic <no-reply@epdg.invalid>',reply_to:'support@epdg.invalid',batch_approval_reference:'SYNTHETIC-mail-batch'};
+ const request={email:'reviewer@epdg.invalid',name:'SYNTHETIC founder reviewer',identity_action:'create_missing',organization:{action:'create_missing',name:'SYNTHETIC review organization',evidence_reference:'SYNTHETIC-organization-establishment'}};
+ await assert.rejects(()=>bootstrap.createPlan(operator,target,{...request,identity_action:'reuse_existing'}));checks++;
+ await assert.rejects(()=>bootstrap.createPlan(operator,target,{...request,organization:{action:'reuse_existing',id:1}}));checks++;
+ await assert.rejects(()=>bootstrap.createPlan(operator,target,{...request,email:'unsafe@example.com'}));checks++;
+ const envelope=await bootstrap.createPlan(operator,target,request);check(envelope.plan.identity.user_id===1&&envelope.plan.organization.id===1,'Empty baseline freezes explicit stable IDs');
+ const approval={plan_sha256:envelope.sha256,approval_reference:'SYNTHETIC-founder-approval',operator_reference:'SYNTHETIC-authorized-reviewer',expires_at:envelope.plan.expires_at,authorize_founder_bootstrap:true,authorize_identity_creation:true,authorize_organization_creation:true,organization_evidence_reference:request.organization.evidence_reference,authorize_invitation_send:true,batch_approval_reference:target.batch_approval_reference};
+ await assert.rejects(()=>bootstrap.applyPlan(operator,target,envelope,{...approval,authorize_identity_creation:false},envelope.sha256));checks++;
+ await assert.rejects(()=>bootstrap.applyPlan(operator,target,envelope,{...approval,authorize_organization_creation:false},envelope.sha256));checks++;
+ await assert.rejects(()=>bootstrap.applyPlan(operator,target,{...envelope,plan:{...envelope.plan,identity:{...envelope.plan.identity,name:'SYNTHETIC changed'}}},approval,envelope.sha256));checks++;
+ await assert.rejects(()=>bootstrap.applyPlan(operator,{...target,target_id:'SYNTHETIC-wrong-target'},envelope,approval,envelope.sha256));checks++;
+ const applied=await bootstrap.applyPlan(operator,target,envelope,approval,envelope.sha256);check(!applied.reused,'First exact bootstrap applies');
+ check((await bootstrap.applyPlan(operator,target,envelope,approval,envelope.sha256)).reused,'Exact bootstrap retry is idempotent');
+ check((await operator.query('SELECT count(*)::int AS n FROM core.users')).rows[0].n===1,'Only one stable mirrored identity created');
+ check((await operator.query('SELECT active FROM portal_security.account_states WHERE user_id=1')).rows[0].active===false,'No active account is seeded');
+ const grant=(await operator.query('SELECT a.status,s.active,s.approved_by_user_id,s.operator_approval_id FROM portal_security.role_assignments a JOIN portal_access.scopes s ON s.assignment_id=a.id')).rows[0];
+ check(grant.status==='pending'&&!grant.active&&grant.approved_by_user_id===null&&grant.operator_approval_id===envelope.plan.id,'Pending scope has external approval, never fake founder self-approval');
+ check((await operator.query("SELECT portal_access.has_permission(1,'role.grant','organization','1') AS allowed")).rows[0].allowed===false,'Pending bootstrap cannot grant roles');
+ await assert.rejects(()=>operator.query('UPDATE portal_bootstrap.approvals SET email=$1',['changed@epdg.invalid']),/immutable/);checks++;
+ fs.writeFileSync(path.join(config.directory,'founder-plan.json'),bootstrap.canonical(envelope),{mode:0o600});
+ fs.writeFileSync(path.join(config.directory,'founder-approval.json'),bootstrap.canonical(approval),{mode:0o600});
+ fs.writeFileSync(path.join(config.directory,'founder-target.json'),bootstrap.canonical(target),{mode:0o600});
+ return {checks,envelope,approval,target};
+}
+async function activateFounder({operator,config}){
+ const {envelope,approval,target}=config.founderBootstrap;let checks=config.founderBootstrap.checks;
+ const check=(v,m)=>{assert.ok(v,m);checks++;};
+ const request=async(route,body)=>{const r=await fetch('http://127.0.0.1:58000/api'+route,{method:'POST',headers:{Origin:config.origin,'X-EPDG-Request':'portal','Content-Type':'application/json'},body:JSON.stringify(body)});return{status:r.status,body:await r.json(),cookie:r.headers.get('set-cookie')};};
+ check((await request('/auth/login',{email:'reviewer@epdg.invalid',password:config.reviewerPassword})).status===401,'Pending founder cannot log in');
+ await assert.rejects(()=>bootstrap.sendInvitation(operator,{...target,portal_origin:'https://other.invalid'},envelope,approval,envelope.sha256));checks++;
+ const sent=await bootstrap.sendInvitation(operator,target,envelope,approval,envelope.sha256);
+ check(sent.delivery_status==='provider_accepted'&&(sent.reused||sent.delivered_at===null),'SMTP acceptance is distinct from actual delivery');
+ check((await bootstrap.sendInvitation(operator,target,envelope,approval,envelope.sha256)).reused,'Duplicate send does not send twice');
+ await assert.rejects(()=>bootstrap.sendInvitation(operator,target,envelope,approval,envelope.sha256,{resend:true}),/cooldown/);checks++;
+ const list=await(await fetch('http://127.0.0.1:58025/api/v1/messages')).json();const row=list.messages.find(m=>m.To?.some(t=>t.Address==='reviewer@epdg.invalid'));
+ const detail=await(await fetch('http://127.0.0.1:58025/api/v1/message/'+row.ID)).json();const token=detail.HTML.match(/#token=([A-Za-z0-9_-]{43})/)[1];
+ check(!JSON.stringify(sent).includes(token),'Operator result does not expose setup token');
+ const expiry=(await operator.query('SELECT expires_at FROM portal_bootstrap.invitations WHERE approval_id=$1',[envelope.plan.id])).rows[0].expires_at;
+ await operator.query("UPDATE portal_bootstrap.invitations SET expires_at=clock_timestamp()-interval '1 second' WHERE approval_id=$1",[envelope.plan.id]);
+ check((await request('/auth/accept-invitation',{token,password:config.reviewerPassword})).status===400,'Expired bootstrap token fails');
+ await operator.query('UPDATE portal_bootstrap.invitations SET expires_at=$2 WHERE approval_id=$1',[envelope.plan.id,expiry]);
+ await operator.query('BEGIN');await operator.query("INSERT INTO portal_bootstrap.revocations(approval_id,operator_role,reason) VALUES($1,session_user,'access_review')",[envelope.plan.id]);
+ check((await operator.query('SELECT portal_bootstrap.current_approval($1) AS current',[envelope.plan.id])).rows[0].current===false,'Revoked approval fails eligibility');await operator.query('ROLLBACK');
+ const responses=await Promise.all([request('/auth/accept-invitation',{token,password:config.reviewerPassword}),request('/auth/accept-invitation',{token,password:config.reviewerPassword})]);
+ check(responses.filter(r=>r.status===200).length===1&&responses.filter(r=>r.status===400).length===1,'Concurrent acceptance is single-use');
+ check(responses.every(r=>!r.cookie),'Acceptance creates no session');
+ const active=(await operator.query('SELECT a.status,s.active,s.approved_by_user_id FROM portal_security.role_assignments a JOIN portal_access.scopes s ON s.assignment_id=a.id WHERE a.user_id=1')).rows[0];
+ check(active.status==='active'&&active.active&&active.approved_by_user_id===null,'Accepted founder retains explicit operator provenance');
+ await assert.rejects(()=>operator.query("SELECT portal_access.grant_role(1,1,'organization_admin','organization','1','SYNTHETIC-self-grant')"));checks++;
+ check((await request('/auth/login',{email:'reviewer@epdg.invalid',password:config.reviewerPassword})).status===200,'Actual founder sign-in succeeds only after acceptance');
+ check((await operator.query("SELECT count(*)::int AS n FROM portal_security.audit_events WHERE user_id=1 AND event='login_succeeded'")).rows[0].n>0,'First successful login is separately audited');
+ return checks;
+}
+module.exports={prepareFounder,activateFounder};

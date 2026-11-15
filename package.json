@@ -25,5 +25,10 @@
   "devDependencies": {
     "railway": "3.16.0"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "overrides": {
+    "express@4.22.1": {
+      "qs": "6.16.1"
+    }
+  }
 }
