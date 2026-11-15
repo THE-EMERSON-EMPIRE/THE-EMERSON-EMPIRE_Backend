@@ -1,6 +1,6 @@
 # Public release summary — EPDG backend
 
-Updated 2026-11-14.
+Updated 2026-11-12.
 
 This page preserves the release history at a high level. Detailed operational journals and provider receipts are kept in a restricted engineering archive. Historical Git commits have not been rewritten.
 
@@ -36,25 +36,6 @@ This page preserves the release history at a high level. Detailed operational jo
 - No reviewer credential or session was created, no existing synthetic account was reused, and no database migration or production-data access occurred.
 - Authenticated login, overview, user and role screens, readiness workflows, CSRF and mutation checks, and logout/revocation remain untested because safe staging credential provisioning was unavailable.
 - The hosted test is not considered closed until the temporary backend service is stopped and that state is verified. Do not treat the current staging candidate as production-ready or merge it as part of this test.
-
-### 2026-11-14 — Local invitation lifecycle review
-
-- Continued the existing backend on the PR #13 baseline, preserving the separate admin staging and learner applications. Added a local-only invitation review flow using existing stable identities, bcrypt sessions, and the existing Mailpit delivery adapter.
-- Added checksummed additive review tables, private token hashes, explicit onboarding eligibility, idempotent issue/resend tracking, one-time email confirmation/password setup, account activation, and session revocation. Requested privileged roles remain proposals with no permissions granted. Production and hosted invitation release remain unavailable.
-- Validation: foundation 9/9; core 194/194; native PostgreSQL and Mailpit 50 checks; TypeScript build passed; lint has zero errors and 161 legacy warnings. The native tests exercised concurrent issuance/acceptance, expiry/replay, delivery failure/resend, credential/account changes, and runtime grants. These are local fixture results, not production authentication evidence.
-- A separate security review found and corrected a local route-composition regression so admin middleware cannot intercept learner multipart uploads. The targeted HTTP regression passes.
-- Targeted reviewed dependency remediation removed all reported advisories: both root and core npm audits now report zero. Compatible transitive patches, narrow overrides, Nodemailer 10.1.4, and removal of an unused Puppeteer dependency were followed by deterministic installs, full tests, and real SMTP checks. The bounded operator disable CLI also passed native revocation/audit checks.
-- No production migrations, real accounts, real emails, provider settings, Netlify restrictions, paid resources, or existing hosted services were changed. The private local fixture is retained for browser review; its credentials/tokens and the real-account register remain outside Git.
-- See `docs/EPDG_INVITATION_REVIEW.md` for architecture, API behavior, migration boundaries, evidence, remaining release work, and the local shutdown/compensating procedure. Do not merge or publish this candidate as a production release.
-
-## 2026-11-14 — Portable account and education release candidate
-
-- Continued the existing PR 14 branch and custom bcrypt/cookie architecture. Added disabled-by-default portable account provisioning, frozen founder-approved plans, HR verification references, stable-ID reconciliation, eleven scoped roles, guarded existing-provider invitation transport, administration tracking and safe self-profile/resource routes. No parallel identity provider or login application was introduced.
-- Added explicit operator-only access/account/education migration tooling with checksum ledgers, minimum runtime privileges, per-role server boundaries and session-bound education RLS. Startup only verifies schema/readiness. The local-only Phase One invitation schema remains distinct from the portable release candidate.
-- Final synthetic evidence: fresh native master 356 checks; independent role/account SQL 227 checks; independent education SQL 32 checks. The master includes the 61-check lifecycle/concurrency helper, so these overlapping checks are not additive. All eleven roles completed real HTTP invitation/password setup/login/session/workspace/profile flows. Learning submissions, revisions and mentor feedback were exercised through the actual service routes.
-- Root tests 9/9, core tests 203/203 and build pass. Lint reports zero errors and 161 pre-existing warnings. Both npm audits report zero advisories. CI and browser evidence are recorded against the committed candidate in the external readiness report.
-- Native verification found and fixed missing service-role identity RLS policies, stale target-role authorization, nullable approval checks, invitation hash disclosure, historical email normalization, and resource-scoped self-profile denial. A legacy planner test double was updated to recognize the normalized identity query; its transaction/rollback assertions remain intact.
-- Production migrations, founder bootstrap, account provisioning, real mail, hosting unlock, deploy/merge and spending remain unperformed. The reviewed target, real-account register, sender verification, exact role approvals and individual live sign-ins remain release gates. See the account/access/education runbooks and role matrix; private credentials, tokens and roster stay outside Git.
 
 ## Public exposure and release boundary
 
