@@ -90,7 +90,7 @@ export class AccountManagementService {
     const hashed = await bcrypt.hash(password,12);const client = await getPool().connect();
     try {
       await assertAccountRelease(client);
-      const { rows: [row] } = await client.query<{accepted:boolean}>('SELECT portal_accounts.accept_invitation($1,$2) AS accepted',[hashToken(token),hashed]);
+      const { rows: [row] } = await client.query<{accepted:boolean}>('SELECT CASE WHEN portal_bootstrap.accept_invitation($1,$2) THEN true ELSE portal_accounts.accept_invitation($1,$2) END AS accepted',[hashToken(token),hashed]);
       if (!row.accepted) throw new PortalError(400,'Invalid or expired invitation');
       return { accepted:true,email_confirmed:true,activated:true,sign_in_verified:false };
     } catch (error) { accountDatabaseError(error); } finally { client.release(); }

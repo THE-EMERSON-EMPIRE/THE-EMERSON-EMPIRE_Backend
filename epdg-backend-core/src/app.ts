@@ -14,12 +14,16 @@ import { createAdminStagingRouter } from './security/adminStagingRoutes';
 import { requireInvitationReview } from './security/invitationPolicy';
 import { createAccountManagementRouter } from './security/accountManagementRoutes';
 import { accountManagementEnabled, accountReleaseConfig } from './security/accountReleaseConfig';
+import { PortalService } from './security/PortalService';
+import { AccountManagementService } from './security/AccountManagementService';
 
 export interface AppDependencies {
   readinessCheck?: () => Promise<void>;
+  portalService?: PortalService;
+  accountService?: AccountManagementService;
 }
 
-export function createApp({ readinessCheck = testConnection }: AppDependencies = {}): Express {
+export function createApp({ readinessCheck = testConnection, portalService, accountService }: AppDependencies = {}): Express {
   const app = express();
 
   app.set('trust proxy', false);
@@ -55,7 +59,7 @@ export function createApp({ readinessCheck = testConnection }: AppDependencies =
     accountReleaseConfig();
     app.use('/api/auth', (_req,res,next)=>{const json=res.json.bind(res);res.json=(body)=>json({...body,environment:'portal-release-candidate'});next();});
   }
-  app.use('/api', createAccountManagementRouter());
+  app.use('/api', createAccountManagementRouter(accountService));
   app.use('/api', createInvitationRouter());
   if (process.env.EPDG_INVITATION_REVIEW_MODE === '1') {
     requireInvitationReview();
@@ -67,7 +71,7 @@ export function createApp({ readinessCheck = testConnection }: AppDependencies =
       else next();
     });
   }
-  app.use('/api', createPortalRouter());
+  app.use('/api', createPortalRouter(portalService));
 
   app.use((_req, res) => {
     res.status(404).json({

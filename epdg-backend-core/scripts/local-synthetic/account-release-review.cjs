@@ -6,11 +6,12 @@ const {spawn,spawnSync}=require('node:child_process'),{Client}=require('pg'),bcr
 const {runtimeEnv}=require('./common.cjs');
 const {applyMigrations}=require('../account-release/migrate.cjs');
 const core=path.resolve(__dirname,'../..'),backend=path.dirname(core),workspace=path.resolve(backend,'../..');
-const stateFile=path.join(backend,'.local-synthetic/account-release-review.json');
+const phaseThree=process.env.EPDG_REVIEW_PHASE==='3';
+const stateFile=path.join(backend,phaseThree?'.local-synthetic/phase-three-review.json':'.local-synthetic/account-release-review.json');
 const pgBin=path.join(workspace,'.tools/postgresql-17.11/pgsql/bin'),mailBin=path.join(workspace,'.tools/mailpit-v1.31.6/mailpit.exe');
 const exe=name=>path.join(pgBin,name+(process.platform==='win32'?'.exe':'')),secret=()=>crypto.randomBytes(32).toString('base64url');
 const load=()=>JSON.parse(fs.readFileSync(stateFile,'utf8'));
-const environment=c=>({...runtimeEnv(c),EPDG_ACCOUNT_MANAGEMENT_ENABLED:'1',EPDG_ACCOUNT_TARGET_ID:'SYNTHETIC-phase-two-target',EPDG_ACCOUNT_RELEASE_APPROVAL:'SYNTHETIC-release-approval',EPDG_INVITATION_DELIVERY_ENABLED:'1',EPDG_INVITATION_BATCH_APPROVAL:'SYNTHETIC-mail-batch',PORTAL_MAIL_REPLY_TO:'support@epdg.invalid'});
+const environment=c=>({...runtimeEnv(c),...(phaseThree?{EPDG_REVIEW_PHASE:'3'}:{}),EPDG_ACCOUNT_MANAGEMENT_ENABLED:'1',EPDG_ACCOUNT_TARGET_ID:'SYNTHETIC-phase-two-target',EPDG_ACCOUNT_RELEASE_APPROVAL:'SYNTHETIC-release-approval',EPDG_INVITATION_DELIVERY_ENABLED:'1',EPDG_INVITATION_BATCH_APPROVAL:'SYNTHETIC-mail-batch',PORTAL_MAIL_REPLY_TO:'support@epdg.invalid'});
 function useEnvironment(c){const env=environment(c);for(const key of Object.keys(process.env))delete process.env[key];Object.assign(process.env,env);}
 function run(binary,args){const r=spawnSync(binary,args,{windowsHide:true,stdio:'ignore',timeout:60000});if(r.status!==0)throw new Error('Fixture operation failed: '+path.basename(binary));}
 function background(binary,args,env,log){const fd=fs.openSync(log,'a');const child=spawn(binary,args,{windowsHide:true,detached:true,env,stdio:['ignore',fd,fd]});child.unref();fs.closeSync(fd);return child.pid;}
@@ -40,13 +41,13 @@ async function setup(){
  const failure=await db(c,'operator',c.failureDatabase);
  try{
   await failure.query(fs.readFileSync(path.join(__dirname,'baseline.sql'),'utf8'));
-  for(const [manifestFile,folder] of [['schema-manifest.json','security-migrations'],['admin-schema-manifest.json','admin-migrations']]){
+  for(const [manifestFile,folder] of [['schema-manifest.json','security-migrations'],...(!phaseThree?[['admin-schema-manifest.json','admin-migrations']]:[])]){
    const m=JSON.parse(fs.readFileSync(path.join(core,'src/security',manifestFile),'utf8'));
    await failure.query(fs.readFileSync(path.join(core,folder,m.file),'utf8'));
    await failure.query('INSERT INTO portal_security.schema_migrations(version,sha256) VALUES($1,$2)',[m.version,m.sha256]);
   }
   await failure.query('CREATE SCHEMA portal_learning');
-  await assert.rejects(()=>applyMigrations(failure,{runtimeRole:'epdg_synthetic_app',migratorRole:'epdg_review_operator'}),/Unrecorded portable schema/);
+  await assert.rejects(()=>applyMigrations(failure,{runtimeRole:'epdg_synthetic_app',migratorRole:'epdg_review_operator',allowMissingAdminBaseline:phaseThree}),/Unrecorded portable schema/);
   const rolledBack=(await failure.query("SELECT to_regnamespace('portal_access') IS NULL AND to_regnamespace('portal_accounts') IS NULL AS complete")).rows[0];
   assert.equal(rolledBack.complete,true);c.migrationFailureRecoveryPassed=true;
  }finally{await failure.end();}
@@ -54,15 +55,16 @@ async function setup(){
  try{
   await operator.query(fs.readFileSync(path.join(__dirname,'baseline.sql'),'utf8'));
   await operator.query(fs.readFileSync(path.join(__dirname,'isolation.sql'),'utf8'));
-  for(const [manifestFile,folder] of [['schema-manifest.json','security-migrations'],['admin-schema-manifest.json','admin-migrations']]){
+  for(const [manifestFile,folder] of [['schema-manifest.json','security-migrations'],...(!phaseThree?[['admin-schema-manifest.json','admin-migrations']]:[])]){
    const m=JSON.parse(fs.readFileSync(path.join(core,'src/security',manifestFile),'utf8')),sql=fs.readFileSync(path.join(core,folder,m.file),'utf8');
    assert.equal(crypto.createHash('sha256').update(sql).digest('hex'),m.sha256);await operator.query(sql);
    await operator.query('INSERT INTO portal_security.schema_migrations(version,sha256) VALUES($1,$2)',[m.version,m.sha256]);
   }
   await operator.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC; REVOKE CREATE ON DATABASE epdg_synthetic FROM PUBLIC');
-  const options={runtimeRole:'epdg_synthetic_app',migratorRole:'epdg_review_operator'};
+  const options={runtimeRole:'epdg_synthetic_app',migratorRole:'epdg_review_operator',allowMissingAdminBaseline:phaseThree};
   c.migrations=await applyMigrations(operator,options);assert.ok((await applyMigrations(operator,options)).every(x=>x.status==='verified'));
   await operator.query("INSERT INTO core.branches(id,code,name) VALUES(1,'epdg','SYNTHETIC education')");
+  if(!phaseThree){
   const hash=await bcrypt.hash(c.reviewerPassword,12);
   await operator.query("INSERT INTO core.users(id,email,name,password,is_verified) VALUES(1,'reviewer@epdg.invalid','SYNTHETIC founder reviewer',$1,true)",[hash]);
   await operator.query("INSERT INTO epdg.users(id,email,name,password,role,is_verified) VALUES(1,'reviewer@epdg.invalid','SYNTHETIC founder reviewer',$1,'admin',true)",[hash]);
@@ -71,7 +73,11 @@ async function setup(){
   await operator.query('INSERT INTO portal_security.memberships(user_id,company_id,active) VALUES(1,1,true)');
   const assignment=(await operator.query("INSERT INTO portal_security.role_assignments(user_id,role_code,status) VALUES(1,'founder_owner','active') RETURNING id")).rows[0].id;
   await operator.query("INSERT INTO portal_access.scopes(assignment_id,organization_id,scope_type,scope_id,approved_by_user_id,approval_reference) VALUES($1,1,'organization','1',1,'SYNTHETIC offline founder bootstrap')",[assignment]);
+  }
   await operator.query("INSERT INTO portal_accounts.release_control(singleton,target_id,approval_ref,enabled,mail_enabled,batch_approval_ref,bound_database,bound_runtime_role,synthetic_only) VALUES(true,'SYNTHETIC-phase-two-target','SYNTHETIC-release-approval',true,true,'SYNTHETIC-mail-batch','epdg_synthetic','epdg_synthetic_app',true)");
+  if(phaseThree){
+   c.founderBootstrap=await require('./founder-bootstrap-checks.cjs').prepareFounder({operator,config:c});
+  }
   c.groupId=crypto.randomUUID();await operator.query("INSERT INTO portal_access.groups(id,organization_id,kind,name) VALUES($1,1,'cohort','SYNTHETIC review cohort')",[c.groupId]);
   c.resources={};for(const kind of ['technical_diagnostic','curriculum','progress','content','commercial','outreach','learning','team']){
    const id=crypto.randomUUID();c.resources[kind]=id;await operator.query("INSERT INTO portal_access.resources(id,organization_id,kind,group_id,title,body,status) VALUES($1,1,$2,$3,$4,'SYNTHETIC review content','draft')",[id,kind,c.groupId,'SYNTHETIC '+kind]);
@@ -81,6 +87,7 @@ async function setup(){
  c.mailPid=background(mailBin,['--smtp','127.0.0.1:51025','--listen','127.0.0.1:58025','--database',path.join(directory,'mail.db')],process.env,path.join(directory,'mailpit.log'));await ready('http://127.0.0.1:58025/readyz');
  c.apiPid=background(process.execPath,[__filename,'serve'],environment(c),path.join(directory,'api.log'));
  fs.writeFileSync(stateFile,JSON.stringify(c,null,2),{mode:0o600});await ready('http://127.0.0.1:58000/health');
+ if(phaseThree){useEnvironment(c);const operator=await db(c);try{c.founderChecks=await require('./founder-bootstrap-checks.cjs').activateFounder({operator,config:c});}finally{await operator.end();}fs.writeFileSync(stateFile,JSON.stringify(c,null,2),{mode:0o600});}
  process.stdout.write('Phase Two native fixture ready; private configuration is .local-synthetic/account-release-review.json\n');
 }
 async function serve(){const c=load();useEnvironment(c);const {checkSecuritySchema}=require('../../dist/security/PortalService.js');const {checkLearningReadiness}=require('../../dist/learning/LearningService.js');const readiness=async()=>{await checkSecuritySchema();await checkLearningReadiness();};await readiness();require('../../dist/app.js').createApp({readinessCheck:readiness}).listen(58000,'127.0.0.1');}
@@ -151,8 +158,15 @@ async function verify(){
   const browser={reviewerEmail:'reviewer@epdg.invalid',reviewerPassword:c.reviewerPassword,participantEmail:browserPlan.email,participantPassword:c.learnerPassword,acceptanceUrl:origin+'/accept-invitation#token='+await mailToken(browserPlan.email),learning:learning.fixture,roles:Object.fromEntries(Object.entries(fixtures).map(([role,f])=>[role,{email:f.plan.email,password:role==='participant'?c.learnerPassword+'X':c.learnerPassword,userId:f.plan.user_id}]))};
   fs.writeFileSync(path.join(c.directory,'browser-review.json'),JSON.stringify(browser,null,2),{mode:0o600});
   const evidence={status:'passed',checks,verified_at:new Date().toISOString(),migrations:require('../account-release/migrate.cjs').entries().map(({schema,manifest})=>({schema,...manifest})),migration_failure_recovery:c.migrationFailureRecoveryPassed===true,coverage:['all eleven canonical roles actual HTTP login/session/workspace','persisted founder approval','verified HR gate','real PostgreSQL restricted runtime','Mailpit SMTP','provider acceptance vs delivery','CSRF/origin','recovery/logout','portable learning submission/revision/mentor feedback','migration ledger idempotence',...lifecycle.coverage],production_changed:false};
-  fs.writeFileSync(path.join(workspace,'build-evidence/epdg-account-release-native-20261114.json'),JSON.stringify(evidence,null,2));process.stdout.write(JSON.stringify(evidence)+'\n');
+  if(phaseThree){evidence.founder_bootstrap_checks=c.founderChecks;evidence.phase='three';}
+  fs.writeFileSync(path.join(workspace,phaseThree?'build-evidence/epdg-phase-three-20261114/account-release-native.json':'build-evidence/epdg-account-release-native-20261114.json'),JSON.stringify(evidence,null,2));process.stdout.write(JSON.stringify(evidence)+'\n');
  }finally{await operator.end();await runtime.end();await require('../../dist/db').getPool().end();}
 }
+async function resume(){
+ const c=load();await free(58000);c.apiPid=background(process.execPath,[__filename,'serve'],environment(c),path.join(c.directory,'api.log'));
+ fs.writeFileSync(stateFile,JSON.stringify(c,null,2),{mode:0o600});await ready('http://127.0.0.1:58000/health');
+ if(phaseThree&&!c.founderChecks){useEnvironment(c);const operator=await db(c);try{c.founderChecks=await require('./founder-bootstrap-checks.cjs').activateFounder({operator,config:c});}finally{await operator.end();}fs.writeFileSync(stateFile,JSON.stringify(c,null,2),{mode:0o600});}
+ process.stdout.write('Isolated review API is ready.\n');
+}
 module.exports={environment,db,load};
-if(require.main===module)({setup,serve,verify}[process.argv[2]]||(()=>{throw new Error('Use setup, serve, or verify');}))().catch(error=>{process.stderr.write('Account release review failed: '+error.message+'\n');process.exitCode=1;});
+if(require.main===module)({setup,serve,verify,resume}[process.argv[2]]||(()=>{throw new Error('Use setup, serve, verify or resume');}))().catch(error=>{process.stderr.write('Account release review failed: '+error.message+'\n');process.exitCode=1;});

@@ -14,6 +14,7 @@ import { isNeonAdminStaging } from '../neon-admin-staging/profile';
 import { accountManagementEnabled, accountReleaseConfig, assertAccountRelease } from './accountReleaseConfig';
 import { ScopedAccessService, checkAccessSchema } from './ScopedAccessService';
 import accountManifest from './account-schema-manifest.json';
+import bootstrapManifest from './bootstrap-schema-manifest.json';
 
 interface Membership { id: string; revision: string; school_id: number | null; company_id: number | null }
 interface RoleAssignment { id: string; role_code: string; revision: string }
@@ -112,6 +113,13 @@ export async function checkSecuritySchema(): Promise<void> {
       await checkAccessSchema(client); await assertAccountRelease(client);
       const { rows } = await client.query('SELECT sha256 FROM portal_accounts.schema_migrations WHERE version=$1', [accountManifest.version]);
       if (rows.length !== 1 || rows[0].sha256 !== accountManifest.sha256) throw new Error('Account management schema is unavailable');
+      const { rows: bootstrap } = await client.query(`SELECT m.sha256,
+        (SELECT count(*)::int FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='portal_bootstrap' AND c.relkind='r' AND c.relrowsecurity) AS secured,
+        has_schema_privilege(current_user,'portal_bootstrap','CREATE') AS can_create,
+        has_table_privilege(current_user,'portal_bootstrap.approvals','INSERT,UPDATE,DELETE') AS can_approve,
+        has_table_privilege(current_user,'portal_bootstrap.invitations','INSERT,UPDATE,DELETE') AS can_send
+        FROM portal_bootstrap.schema_migrations m WHERE m.version=$1`,[bootstrapManifest.version]);
+      if (bootstrap.length !== 1 || bootstrap[0].sha256 !== bootstrapManifest.sha256 || bootstrap[0].secured !== 5 || bootstrap[0].can_create || bootstrap[0].can_approve || bootstrap[0].can_send) throw new Error('Founder bootstrap boundary is unavailable');
     } finally { client.release(); }
     return;
   }
@@ -162,6 +170,7 @@ export async function checkAdminStagingSchema(): Promise<void> {
 }
 
 export class PortalService {
+  constructor(private readonly recoveryTransport: typeof deliverEmail = deliverEmail) {}
   // Scoped feature operations run inside the same transaction and current
   // account/session validation as authentication, including revocation checks.
   async withAuthenticatedSession<T>(raw: string, work: (client: PoolClient, user: ReturnType<typeof publicUser>) => Promise<T>, exclusive = false): Promise<T> {
@@ -275,7 +284,7 @@ export class PortalService {
         const client = await getPool().connect();
         try { await assertAccountRelease(client, true); } finally { client.release(); }
       }
-      return deliverEmail({ from: process.env.SMTP_FROM ?? '', to: delivery.email,
+      return this.recoveryTransport({ from: process.env.SMTP_FROM ?? '', to: delivery.email,
       ...(config ? {replyTo: config.replyTo} : {}),
       subject: 'EPDG portal password recovery', html: `<p>A password reset was requested for your account.</p><p><a href="${link}">Reset password</a></p><p>This link expires in 20 minutes. If you did not request it, ignore this message.</p>` })
     })()

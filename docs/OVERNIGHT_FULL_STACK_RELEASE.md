@@ -53,3 +53,9 @@ Before a controlled reviewer session can be called accepted:
 4. Revoke or expire any temporary identity or session, then document the final SHAs, results, blockers, and service-scoped rollback instructions.
 
 Preserve production data and existing services. Keep secrets, private records, and account credentials out of this public summary.
+
+## 2026-11-14 — Phase Three held release candidate
+
+Ordinary merges preserve current main and supporting staging ancestry, including the sanitized journal. The additive founder bootstrap now supports separately approved identity and first-organization establishment through an offline operator, with immutable scope provenance, inactive preparation, single-use setup and emergency disable. Existing portable migration bytes remain unchanged. A missing administrator baseline has an explicit atomic prerequisite path.
+
+Local synthetic checks cover all eleven roles, founder reuse/history, lock-wait token rotation and production-profile TLS/cookies. The private release package binds exact commits, CI, manifests, restore and browser evidence. No real account, mail dispatch, production migration, deployment, branch merge, access-control unlock or spend was performed. Production stays held for the exact founder decision record and unresolved provider/operator prerequisites. Compensate by stopping mail and revoking approved access while preserving immutable audit; never reset identity or learning history.
